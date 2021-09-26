@@ -94,5 +94,5 @@ DataGenerator.prototype.GeneratePoints = function(count) {
         labels.push(isSecond ? 1 : 0)
     }
 
-    return {points: points, labels: labels}
+    return {points: points, labels: labels, length: count}
 }

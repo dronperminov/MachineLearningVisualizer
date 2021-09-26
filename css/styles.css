@@ -40,3 +40,7 @@
 .font-less {
     font-size: 0.8em;
 }
+
+.no-margin {
+    margin: 0 !important;
+}
