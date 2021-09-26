@@ -1,0 +1,56 @@
+.control-block {
+    margin-bottom: 10px;
+    padding: 5px;
+    user-select: none;
+}
+
+.control-block input[type="text"],
+.control-block input[type="number"],
+.control-block input[type="range"],
+.control-block select {
+    box-sizing: border-box;
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #808080;
+    padding: 0;
+}
+
+.control-block input[type="text"]:focus,
+.control-block input[type="range"],
+.control-block input[type="number"]:focus,
+.control-block select:focus {
+    outline: none;
+    border-bottom: 1px solid #90caf9;
+}
+
+.control-block input[type="text"]:hover,
+.control-block input[type="range"],
+.control-block input[type="number"]:hover,
+.control-block select:hover {
+    outline: none;
+    border-bottom: 1px solid #90caf9;
+}
+
+.control-block input[type="submit"] {
+    background: none;
+    padding: 5px;
+}
+
+.control-block input[type="submit"]:focus {
+    border: 2px solid #90caf9;
+}
+
+.control-block input[type="submit"]:hover {
+    border: 2px solid #90caf9;
+    color: #90caf9;
+}
+
+.controls-section {
+    border-top: 1px solid #000;
+}
+
+.controls-section .header {
+    padding: 5px;
+    font-weight: bold;
+    font-size: 1.15em;
+}

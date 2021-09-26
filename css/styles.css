@@ -1,0 +1,42 @@
+.visualizer * {
+    font-family: Ubuntu;
+    font-size: 18px;
+}
+
+.visualizer {
+    border: 1px solid #000;
+    display: table;
+    width: 100%;
+}
+
+.left-controls {
+    border: 1px solid #000;
+    display: table-cell;
+    width: 270px;
+    vertical-align: top;
+}
+
+.main-view {
+    display: table-cell;
+}
+
+.top-controls {
+    border: 1px solid #000;
+    padding: 5px;
+}
+
+.visualizer-view {
+    border: 1px solid #000;
+}
+
+.visualizer-view canvas {
+    border: 1px solid;
+}
+
+.centered {
+    text-align: center;
+}
+
+.font-less {
+    font-size: 0.8em;
+}

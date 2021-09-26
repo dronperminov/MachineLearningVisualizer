@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Machine learning visualizer</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <link rel="stylesheet" type="text/css" href="css/controls.css">
+</head>
+<body>
+    <div class="visualizer">
+        <div class="left-controls">
+            <div class="control-block">
+                <label><b>ML алгоритм:</b><br>
+                <select id="algorithm-type-box" onchange="visualizer = GetVisualizerByType()">
+                    <option value="k-means">k-средних</option>
+                    <option value="neuron">Нейрон</option>
+                    <option value="neural-network" selected>Нейронная сеть</option>
+                    <option value="log-reg">Логистическая регрессия</option>
+                    <option value="svm">Метод опорных векторов (SVM)</option>
+                </select>
+                </label>
+            </div>
+
+            <div id="left-controls-box"></div>
+        </div>
+
+        <div class="main-view">
+            <div class="top-controls" id="top-controls-box">
+                <span>top controls</span>
+            </div>
+
+            <div class="visualizer-view" id="view-box"></div>
+        </div>
+    </div>
+
+    <script src="js/controls.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/neural-network-visualizer.js"></script>
+
+    <script>
+        function ClearBox(box) {
+            while (box.children.length) {
+                box.removeChild(box.children[0])
+            }
+        }
+
+        function GetVisualizerByType() {
+            let algorithmTypeBox = document.getElementById('algorithm-type-box')
+            let type = algorithmTypeBox.value
+
+            let leftControlsBox = document.getElementById('left-controls-box')
+            let topControlsBox = document.getElementById('top-controls-box')
+            let viewBox = document.getElementById('view-box')
+
+            ClearBox(leftControlsBox)
+            ClearBox(topControlsBox)
+            ClearBox(viewBox)
+
+            if (type == 'neural-network')
+                return new NeuralNetworkVisualizer(viewBox, leftControlsBox, topControlsBox)
+
+            throw `unknown type "${type}"`
+        }
+
+        let visualizer = GetVisualizerByType()
+    </script>
+</body>
+</html>
