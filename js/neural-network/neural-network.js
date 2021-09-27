@@ -35,26 +35,6 @@ NeuralNetwork.prototype.Forward = function(x) {
     return this.layers[this.layers.length - 1].output
 }
 
-NeuralNetwork.prototype.SplitOnBatches = function(data, batchSize) {
-    let x = []
-    let y = []
-
-    for (let i = 0; i < data.length; i += batchSize) {
-        let batchX = []
-        let batchY = []
-
-        for (j = 0; j < batchSize; j++) {
-            batchX.push(data.x[(i + j) % data.length])
-            batchY.push(data.y[(i + j) % data.length])
-        }
-
-        x.push(batchX)
-        y.push(batchY)
-    }
-
-    return { x: x, y: y, length: x.length }
-}
-
 NeuralNetwork.prototype.CalculateLoss = function(y, t, deltas, L) {
     let loss = 0
 

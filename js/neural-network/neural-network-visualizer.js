@@ -13,7 +13,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.leftControlsBox.appendChild(trainSection)
 
     this.learningRateBox = MakeNumberInput('learning-rate-box', 0.1, 0.001, 0.001, 10)
-    this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'tanh')
+    this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'relu')
     this.optimizerBox = MakeSelect('optimizer-box', {'sgd': 'SGD', 'sgdm': 'SGD momentum', 'adam': 'Adam', 'nag': 'NAG'}, 'adam')
     this.batchSizeBox = MakeNumberInput('batch-size-box', 1, 1, 1, 32, 'range')
 
@@ -22,7 +22,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     // MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
     MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value })
 
-    this.AddEventListener(this.activationBox, 'change', () => this.InitNetwork(), true)
+    this.AddEventListener(this.activationBox, 'change', () => this.ResetTrain())
 }
 
 NeuralNetworkVisualizer.prototype.InitDataSection = function() {
@@ -34,7 +34,7 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
         CIRCLE_DATA: 'окружность',
         SQUARE_DATA: 'квадраты',
         AREAS_DATA: 'две области'
-    }, AREAS_DATA, () => this.UpdateDataType())
+    }, CIRCLE_DATA, () => this.UpdateDataType())
 
     this.dataTestPartBox = MakeNumberInput('data-test-part-box', 0.5, 0.05, 0.1, 0.9, 'range')
     this.dataNoisePartBox = MakeNumberInput('data-noise-part-box', 0.0, 0.05, 0, 0.5, 'range')
@@ -52,10 +52,11 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
     MakeLabeledBlock(dataSection, this.showDiscreteBox, 'Показать выход дискретно')
     MakeLabeledBlock(dataSection, this.regenerateButton, '', 'centered control-block')
 
-    this.AddEventListener(this.dataTypeBox, 'change', () => this.UpdateData(), true)
+    this.AddEventListener(this.dataTypeBox, 'change', () => this.UpdateData())
     this.AddEventListener(this.dataTestPartBox, 'input', () => this.UpdateData())
     this.AddEventListener(this.dataNoisePartBox, 'input', () => this.UpdateData())
-    this.AddEventListener(this.regenerateButton, 'click', () => this.UpdateData())
+    this.AddEventListener(this.batchSizeBox, 'input', () => this.ResetTrain(false))
+    this.AddEventListener(this.regenerateButton, 'click', () => this.UpdateData(false))
     this.AddEventListener(this.showTestBox, 'change', () => this.DrawDataset())
     this.AddEventListener(this.showDiscreteBox, 'change', () => this.DrawDataset())
 }
@@ -71,6 +72,26 @@ NeuralNetworkVisualizer.prototype.InitNetwork = function() {
     this.isTraining = false
 }
 
+NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize) {
+    let x = []
+    let y = []
+
+    for (let i = 0; i < data.length; i += batchSize) {
+        let batchX = []
+        let batchY = []
+
+        for (j = 0; j < batchSize; j++) {
+            batchX.push(data.x[(i + j) % data.length])
+            batchY.push(data.y[(i + j) % data.length])
+        }
+
+        x.push(batchX)
+        y.push(batchY)
+    }
+
+    return { x: x, y: y, length: x.length }
+}
+
 NeuralNetworkVisualizer.prototype.StepTrain = function() {
     let learningRate = +this.learningRateBox.value
     let optimizer = new Optimizer(learningRate)
@@ -82,15 +103,33 @@ NeuralNetworkVisualizer.prototype.StepTrain = function() {
     console.log('epoch: ' + this.epoch, 'loss: ' + loss)
 }
 
-NeuralNetworkVisualizer.prototype.InitTrain = function() {
-    this.StopTrain()
+NeuralNetworkVisualizer.prototype.LoopTrain = function() {
+    if (!this.isTraining)
+        return
 
+    this.StepTrain()
+    requestAnimationFrame(() => this.LoopTrain())
+}
+
+NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     let trainData = this.ConvertDataToNetwork(this.trainData)
     let testData = this.ConvertDataToNetwork(this.testData)
 
     this.batchSize = +this.batchSizeBox.value
-    this.batches = this.network.SplitOnBatches(trainData, this.batchSize)
+    this.batches = this.SplitOnBatches(trainData, this.batchSize)
+}
+
+NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true) {
+    this.StopTrain()
+    this.UpdateNetworkData()
+
     this.epoch = 0
+
+    if (needResetNetwork) {
+        this.InitNetwork()
+    }
+
+    this.DrawDataset()
 }
 
 NeuralNetworkVisualizer.prototype.StopTrain = function() {
@@ -108,13 +147,7 @@ NeuralNetworkVisualizer.prototype.StartTrain = function() {
     this.trainButton.value = 'Остановить'
     this.isTraining = true
 
-    let trainInterval = setInterval(() => {
-        this.StepTrain()
-
-        if (!this.isTraining) {
-            clearInterval(trainInterval)
-        }
-    }, 10)
+    requestAnimationFrame(() => this.LoopTrain())
 }
 
 NeuralNetworkVisualizer.prototype.TrainNetwork = function() {
@@ -126,7 +159,7 @@ NeuralNetworkVisualizer.prototype.TrainNetwork = function() {
     }
 }
 
-NeuralNetworkVisualizer.prototype.ConvertDataToNetwork = function(data, labelsCount = 2) {
+NeuralNetworkVisualizer.prototype.ConvertDataToNetwork = function(data) {
     let result = { x: [], y: [], length: data.length }
 
     for (let i = 0; i < data.length; i++) {
@@ -138,14 +171,17 @@ NeuralNetworkVisualizer.prototype.ConvertDataToNetwork = function(data, labelsCo
 }
 
 NeuralNetworkVisualizer.prototype.InitTopControls = function() {
+    this.resetButton = MakeButton('reset-btn', 'Сбросить')
     this.trainButton = MakeButton('train-btn', 'Обучить')
     this.stepButton = MakeButton('step-btn', 'Шаг')
 
+    this.topControlsBox.appendChild(this.resetButton)
     this.topControlsBox.appendChild(this.trainButton)
     this.topControlsBox.appendChild(this.stepButton)
 
+    this.AddEventListener(this.resetButton, 'click', () => { this.ResetTrain() })
     this.AddEventListener(this.trainButton, 'click', () => { this.TrainNetwork() })
-    this.AddEventListener(this.stepButton, 'click', () => { this.StepTrain(); this.StopTrain() })
+    this.AddEventListener(this.stepButton, 'click', () => { this.StopTrain(); this.StepTrain(); })
 }
 
 NeuralNetworkVisualizer.prototype.InitView = function() {
@@ -163,6 +199,8 @@ NeuralNetworkVisualizer.prototype.InitControls = function() {
 
     this.InitTrainSection()
     this.InitDataSection()
+
+    this.UpdateData()
 }
 
 NeuralNetworkVisualizer.prototype.AddEventListener = function(component, eventName, event, needCall = false) {
@@ -235,7 +273,7 @@ NeuralNetworkVisualizer.prototype.DrawDataset = function() {
     }
 }
 
-NeuralNetworkVisualizer.prototype.UpdateData = function() {
+NeuralNetworkVisualizer.prototype.UpdateData = function(resetTrain = true) {
     let type = this.dataTypeBox.value
     let part = +this.dataTestPartBox.value
     let noise = +this.dataNoisePartBox.value
@@ -248,6 +286,12 @@ NeuralNetworkVisualizer.prototype.UpdateData = function() {
     this.testData = dataGenerator.GeneratePoints(testCount)
     this.trainData = dataGenerator.GeneratePoints(trainCount)
 
-    this.InitTrain()
+    if (resetTrain) {
+        this.ResetTrain()
+    }
+    else {
+        this.UpdateNetworkData()
+    }
+
     this.DrawDataset()
 }
