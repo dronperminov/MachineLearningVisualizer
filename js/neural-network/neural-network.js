@@ -55,10 +55,19 @@ NeuralNetwork.prototype.CalculateLoss = function(y, t, deltas, L) {
 
     for (let i = 0; i < y.length; i++) {
         deltas[i] = []
-        loss += L(y[i], t[i], deltas[i])
+        loss += L.EvaluateDeltas(y[i], t[i], deltas[i])
     }
 
     return loss
+}
+
+NeuralNetwork.prototype.CalculateLossOnData = function(data, L) {
+    let loss = 0
+
+    for (let i = 0; i < data.length; i++)
+        loss += L.Evaluate(this.Predict(data.x[i]), data.y[i])
+
+    return loss / data.length
 }
 
 NeuralNetwork.prototype.TrainOnBatch = function(x, y, optimizer, L) {

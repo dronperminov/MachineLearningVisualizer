@@ -8,6 +8,38 @@ function NeuralNetworkVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
     this.InitControls()
 }
 
+NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
+    this.lossSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+
+    this.trainLossPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+    this.testLossPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+
+    this.trainLossBox = MakeSpan('train-loss-box', '')
+    this.testLossBox = MakeSpan('test-loss-box', '')
+    this.testLossBox.style.color = '#0a0'
+
+    this.lossSVG.setAttribute('width', '260')
+    this.lossSVG.setAttribute('height', '60')
+
+    this.trainLossPath.setAttribute("class", 'line-path')
+    this.trainLossPath.setAttribute("stroke", '#000')
+    this.lossSVG.appendChild(this.trainLossPath)
+
+    this.testLossPath.setAttribute("class", 'line-path')
+    this.testLossPath.setAttribute("stroke", '#0a0')
+    this.lossSVG.appendChild(this.testLossPath)
+
+    let div = MakeDiv('loss-block', '')
+    div.appendChild(document.createElement('hr'))
+    div.appendChild(this.trainLossBox)
+    div.appendChild(document.createElement('br'))
+    div.appendChild(this.testLossBox)
+    div.appendChild(document.createElement('br'))
+    div.appendChild(this.lossSVG)
+
+    MakeLabeledBlock(section, div, '', 'control-block no-margin')
+}
+
 NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     let trainSection = MakeSection('Параметры обучения')
     this.leftControlsBox.appendChild(trainSection)
@@ -31,14 +63,19 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     MakeLabeledBlock(trainSection, this.regularizationBox, '<b>L2 регуляризация (&lambda;)</b>')
     MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>')
     MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
-    MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value })
+    MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value }, 'control-block no-margin')
 
     this.AddEventListener(this.learningRateBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
     this.AddEventListener(this.learningRateBox, 'input', () => this.optimizer.SetLearningRate(+this.learningRateBox.value))
+
     this.AddEventListener(this.regularizationBox, 'input', () => this.optimizer.SetRegularization(+this.regularizationBox.value))
+    this.AddEventListener(this.regularizationBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
+
     this.AddEventListener(this.activationBox, 'change', () => { this.network.SetActivation(this.activationBox.value); this.DrawDataset() })
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
+
+    this.AppendLossComponents(trainSection)
 }
 
 NeuralNetworkVisualizer.prototype.InitDataSection = function() {
@@ -79,6 +116,7 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
 NeuralNetworkVisualizer.prototype.InitNetwork = function() {
     let activation = this.activationBox.value
     this.network = new NeuralNetwork(5)
+    this.lossFunction = new LossFunction()
 
     this.network.AddLayer({ 'name': 'fc', 'size': 8, 'activation': activation })
     this.network.AddLayer({ 'name': 'fc', 'size': 8, 'activation': activation })
@@ -108,17 +146,57 @@ NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize, isR
     return { x: x, y: y, length: x.length }
 }
 
+NeuralNetworkVisualizer.prototype.ResetLosses = function() {
+    this.trainLosses = []
+    this.testLosses = []
+
+    this.trainLossPath.setAttribute('d', '')
+    this.testLossPath.setAttribute('d', '')
+
+    this.minLoss = Infinity
+    this.maxLoss = -Infinity
+}
+
+NeuralNetworkVisualizer.prototype.AppendLoss = function(losses, loss, path) {
+    losses.push(loss)
+
+    if (losses.length == 1)
+        return
+
+    let width = +this.lossSVG.getAttribute('width')
+    let height = +this.lossSVG.getAttribute('height')
+    let padding = 3
+    let points = ''
+
+    for (let i = 0; i < losses.length; i++) {
+        let loss = (losses[i] - this.minLoss) / (this.maxLoss - this.minLoss)
+        let x = padding + i / (losses.length - 1) * (width - 2 * padding)
+        let y = height - padding - loss * (height - 2 * padding)
+        points += `${i == 0 ? 'M' : ' L'} ${x} ${y}`
+    }
+
+    path.setAttribute('d', points)
+}
+
 NeuralNetworkVisualizer.prototype.StepTrain = function() {
-    let loss = this.network.TrainEpoch(this.batches, this.batchSize, this.optimizer, MSE)
+    this.network.TrainEpoch(this.batches, this.batchSize, this.optimizer, this.lossFunction)
+
+    let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
+    let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
+
+    this.minLoss = Math.min(this.minLoss, Math.min(trainLoss, testLoss))
+    this.maxLoss = Math.max(this.maxLoss, Math.max(trainLoss, testLoss))
 
     this.epoch++
+    this.AppendLoss(this.trainLosses, trainLoss, this.trainLossPath)
+    this.AppendLoss(this.testLosses, testLoss, this.testLossPath)
+    this.UpdateLossesInfo(trainLoss, testLoss)
 
     if (this.epoch % 4 == 0 || !this.isTraining) {
         this.DrawDataset()
-        this.DrawLosses()
     }
 
-    console.log('epoch: ' + this.epoch, 'loss: ' + loss)
+    console.log('epoch: ' + this.epoch, 'loss: ' + trainLoss, 'test: ' + testLoss)
 }
 
 NeuralNetworkVisualizer.prototype.LoopTrain = function() {
@@ -155,13 +233,23 @@ NeuralNetworkVisualizer.prototype.UpdateCanvasData = function() {
     return canvasData
 }
 
+NeuralNetworkVisualizer.prototype.UpdateLossesInfo = function(trainLoss, testLoss) {
+    this.trainLossBox.innerHTML = 'Ошибка на train: ' + Math.round(trainLoss * 10000) / 10000
+    this.testLossBox.innerHTML = 'Ошибка на test: ' + Math.round(testLoss * 10000) / 10000
+}
+
 NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
-    let trainData = this.ConvertDataToNetwork(this.trainData)
-    let testData = this.ConvertDataToNetwork(this.testData)
+    this.trainNetworkData = this.ConvertDataToNetwork(this.trainData)
+    this.testNetworkData = this.ConvertDataToNetwork(this.testData)
 
     this.batchSize = +this.batchSizeBox.value
-    this.batches = this.SplitOnBatches(trainData, this.batchSize)
+    this.batches = this.SplitOnBatches(this.trainNetworkData, this.batchSize)
     this.canvasData = this.UpdateCanvasData()
+
+    let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
+    let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
+
+    this.UpdateLossesInfo(trainLoss, testLoss)
 }
 
 NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
@@ -174,15 +262,16 @@ NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
 
 NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true) {
     this.StopTrain()
-    this.UpdateNetworkData()
-    this.InitOptimizer()
-
-    this.epoch = 0
 
     if (needResetNetwork) {
         this.InitNetwork()
     }
 
+    this.epoch = 0
+
+    this.UpdateNetworkData()
+    this.InitOptimizer()
+    this.ResetLosses()
     this.DrawDataset()
 }
 
