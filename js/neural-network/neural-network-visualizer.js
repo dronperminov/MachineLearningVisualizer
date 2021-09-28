@@ -1,43 +1,12 @@
 const NEURAL_NETWORK_DATA_SIZE = 500
 
-function NeuralNetworkVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
+function NeuralNetworkVisualizer(visualizerBox, viewBox, leftcontrolsBox, topControlsBox) {
+    this.visualizerBox = visualizerBox
     this.viewBox = viewBox
     this.leftControlsBox = leftcontrolsBox
     this.topControlsBox = topControlsBox
 
     this.InitControls()
-}
-
-NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
-    this.lossSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-
-    this.trainLossPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
-    this.testLossPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
-
-    this.trainLossBox = MakeSpan('train-loss-box', '')
-    this.testLossBox = MakeSpan('test-loss-box', '')
-    this.testLossBox.style.color = '#0a0'
-
-    this.lossSVG.setAttribute('width', '260')
-    this.lossSVG.setAttribute('height', '60')
-
-    this.trainLossPath.setAttribute("class", 'line-path')
-    this.trainLossPath.setAttribute("stroke", '#000')
-    this.lossSVG.appendChild(this.trainLossPath)
-
-    this.testLossPath.setAttribute("class", 'line-path')
-    this.testLossPath.setAttribute("stroke", '#0a0')
-    this.lossSVG.appendChild(this.testLossPath)
-
-    let div = MakeDiv('loss-block', '')
-    div.appendChild(document.createElement('hr'))
-    div.appendChild(this.trainLossBox)
-    div.appendChild(document.createElement('br'))
-    div.appendChild(this.testLossBox)
-    div.appendChild(document.createElement('br'))
-    div.appendChild(this.lossSVG)
-
-    MakeLabeledBlock(section, div, '', 'control-block no-margin')
 }
 
 NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
@@ -74,8 +43,6 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.AddEventListener(this.activationBox, 'change', () => { this.network.SetActivation(this.activationBox.value); this.DrawDataset() })
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
-
-    this.AppendLossComponents(trainSection)
 }
 
 NeuralNetworkVisualizer.prototype.InitDataSection = function() {
@@ -92,8 +59,6 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
     this.dataTestPartBox = MakeNumberInput('data-test-part-box', 0.5, 0.05, 0.1, 0.9, 'range')
     this.dataNoisePartBox = MakeNumberInput('data-noise-part-box', 0.0, 0.05, 0, 0.5, 'range')
 
-    this.showTestBox = MakeCheckBox('show-test-data-box')
-    this.showDiscreteBox = MakeCheckBox('show-discrete-box')
     this.regenerateButton = MakeButton('data-regenerate-btn', 'Сгенерировать')
 
     this.dataCount = NEURAL_NETWORK_DATA_SIZE
@@ -101,16 +66,12 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
     MakeLabeledBlock(dataSection, this.dataTypeBox, '<b>Тип данных</b><br>')
     MakeLabeledRange(dataSection, this.dataTestPartBox, '<b>Доля тестовых данных<br>', () => { return Math.round(this.dataTestPartBox.value * 100) + '%' }, 'control-block no-margin')
     MakeLabeledRange(dataSection, this.dataNoisePartBox, '<b>Шум<br>', () => { return Math.round(this.dataNoisePartBox.value * 100) + '%' }, 'control-block no-margin')
-    MakeLabeledBlock(dataSection, this.showTestBox, 'Показать тестовые данные', 'control-block no-margin')
-    MakeLabeledBlock(dataSection, this.showDiscreteBox, 'Показать выход дискретно')
     MakeLabeledBlock(dataSection, this.regenerateButton, '', 'centered control-block')
 
     this.AddEventListener(this.dataTypeBox, 'change', () => this.UpdateData(false))
     this.AddEventListener(this.dataTestPartBox, 'input', () => this.UpdateData(false))
     this.AddEventListener(this.dataNoisePartBox, 'input', () => this.UpdateData(false))
     this.AddEventListener(this.regenerateButton, 'click', () => this.UpdateData(false))
-    this.AddEventListener(this.showTestBox, 'change', () => this.DrawDataset())
-    this.AddEventListener(this.showDiscreteBox, 'change', () => this.DrawDataset())
 }
 
 NeuralNetworkVisualizer.prototype.InitNetwork = function() {
@@ -323,21 +284,77 @@ NeuralNetworkVisualizer.prototype.InitTopControls = function() {
     this.AddEventListener(this.stepButton, 'click', () => { this.StopTrain(); this.StepTrain(); })
 }
 
+NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
+    this.lossSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+
+    this.trainLossPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+    this.testLossPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+
+    this.trainLossBox = MakeSpan('train-loss-box', '')
+    this.testLossBox = MakeSpan('test-loss-box', '')
+    this.testLossBox.style.color = '#0a0'
+
+    this.lossSVG.setAttribute('width', '300')
+    this.lossSVG.setAttribute('height', '120')
+
+    this.trainLossPath.setAttribute("class", 'line-path')
+    this.trainLossPath.setAttribute("stroke", '#000')
+    this.lossSVG.appendChild(this.trainLossPath)
+
+    this.testLossPath.setAttribute("class", 'line-path')
+    this.testLossPath.setAttribute("stroke", '#0a0')
+    this.lossSVG.appendChild(this.testLossPath)
+
+    let div = MakeDiv('loss-block', '')
+    div.appendChild(document.createElement('hr'))
+    div.appendChild(this.trainLossBox)
+    div.appendChild(document.createElement('br'))
+    div.appendChild(this.testLossBox)
+    div.appendChild(document.createElement('br'))
+    div.appendChild(this.lossSVG)
+
+    MakeLabeledBlock(section, div, '', 'control-block no-margin')
+}
+
 NeuralNetworkVisualizer.prototype.InitView = function() {
     this.dataCanvas = document.createElement('canvas')
     this.dataCtx = this.dataCanvas.getContext('2d')
-    this.dataCanvas.width = 300 // TODO
-    this.dataCanvas.height = 300 // TODO
+    this.dataCanvas.width = 300
+    this.dataCanvas.height = 300
 
-    this.viewBox.appendChild(this.dataCanvas)
+    this.showTestBox = MakeCheckBox('show-test-data-box')
+    this.showDiscreteBox = MakeCheckBox('show-discrete-box')
+
+    this.networkSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    this.networkSVG.style.width = '100%'
+    this.networkSVG.style.height = '100%'
+
+    let table = MakeDiv('', '', 'table')
+    let cell1 = MakeDiv('', '', 'table-cell')
+    let cell2 = MakeDiv('', '', 'table-cell')
+
+    cell1.appendChild(this.networkSVG)
+    cell2.style.width = (this.dataCanvas.width + 10) + 'px'
+
+    table.appendChild(cell1)
+    table.appendChild(cell2)
+
+    MakeLabeledBlock(cell2, this.dataCanvas, '', 'control-block no-margin')
+    MakeLabeledBlock(cell2, this.showTestBox, 'Показать тестовые данные', 'control-block no-margin')
+    MakeLabeledBlock(cell2, this.showDiscreteBox, 'Показать выход дискретно')
+    this.AppendLossComponents(cell2)
+    this.viewBox.appendChild(table)
+
+    this.AddEventListener(this.showTestBox, 'change', () => this.DrawDataset())
+    this.AddEventListener(this.showDiscreteBox, 'change', () => this.DrawDataset())
 }
 
 NeuralNetworkVisualizer.prototype.InitControls = function() {
-    this.InitView()
     this.InitTopControls()
 
     this.InitTrainSection()
     this.InitDataSection()
+    this.InitView()
 
     this.UpdateData()
 }

@@ -7,7 +7,7 @@
     <link rel="stylesheet" type="text/css" href="css/controls.css">
 </head>
 <body>
-    <div class="visualizer">
+    <div class="visualizer" id="visualizer-box">
         <div class="left-controls">
             <div class="control-block">
                 <label><b>ML алгоритм:</b><br>
@@ -25,11 +25,13 @@
         </div>
 
         <div class="main-view">
-            <div class="top-controls" id="top-controls-box">
-                <span>top controls</span>
-            </div>
+            <div class="main-view-flex">
+                <div class="top-controls" id="top-controls-box">
+                    <span>top controls</span>
+                </div>
 
-            <div class="visualizer-view" id="view-box"></div>
+                <div class="visualizer-view" id="view-box"></div>
+            <div>
         </div>
     </div>
 
@@ -55,6 +57,7 @@
             let algorithmTypeBox = document.getElementById('algorithm-type-box')
             let type = algorithmTypeBox.value
 
+            let visualizerBox = document.getElementById('visualizer-box')
             let leftControlsBox = document.getElementById('left-controls-box')
             let topControlsBox = document.getElementById('top-controls-box')
             let viewBox = document.getElementById('view-box')
@@ -64,7 +67,7 @@
             ClearBox(viewBox)
 
             if (type == 'neural-network')
-                return new NeuralNetworkVisualizer(viewBox, leftControlsBox, topControlsBox)
+                return new NeuralNetworkVisualizer(visualizerBox, viewBox, leftControlsBox, topControlsBox)
 
             throw `unknown type "${type}"`
         }
