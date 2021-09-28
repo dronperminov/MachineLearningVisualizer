@@ -1,5 +1,6 @@
-function Optimizer(learningRate, algorithm = 'sgd') {
+function Optimizer(learningRate, lambda = 0, algorithm = 'sgd') {
     this.learningRate = learningRate
+    this.lambda = lambda
     this.algorithm = algorithm
     this.update = this.UpdateSGD
     this.epoch = 1
@@ -26,6 +27,10 @@ function Optimizer(learningRate, algorithm = 'sgd') {
 
 Optimizer.prototype.SetLearningRate = function(learningRate) {
     this.learningRate = learningRate
+}
+
+Optimizer.prototype.SetRegularization = function(lambda) {
+    this.lambda = lambda
 }
 
 Optimizer.prototype.UpdateSGD = function(weight, batchSize) {
@@ -71,6 +76,7 @@ Optimizer.prototype.UpdateAdam = function(weight, batchSize) {
 }
 
 Optimizer.prototype.Update = function(weight, batchSize) {
+    weight.value -= this.learningRate * this.lambda / batchSize * weight.value
     this.update(weight, batchSize)
 }
 

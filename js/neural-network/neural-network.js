@@ -102,3 +102,9 @@ NeuralNetwork.prototype.Train = function(trainData, testData, epoches, batchSize
 
     return loss
 }
+
+NeuralNetwork.prototype.PrintInfo = function() {
+    for (let layer of this.layers) {
+        layer.WeightInfo()
+    }
+}

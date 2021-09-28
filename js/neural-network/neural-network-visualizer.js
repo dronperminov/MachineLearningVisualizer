@@ -13,6 +13,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.leftControlsBox.appendChild(trainSection)
 
     this.learningRateBox = MakeNumberInput('learning-rate-box', 0.01, 0.001, 0.001, 10)
+    this.regularizationBox = MakeNumberInput('regularization-box', 0.01, 0.001, 0, 10)
     this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'tanh')
 
     this.learningRateBox.setAttribute('pattern', '\d+')
@@ -26,13 +27,15 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
 
     this.batchSizeBox = MakeNumberInput('batch-size-box', 4, 1, 1, 32, 'range')
 
-    MakeLabeledBlock(trainSection, this.learningRateBox, '<b>Скорость обучения</b>')
+    MakeLabeledBlock(trainSection, this.learningRateBox, '<b>Скорость обучения (&eta;)</b>')
+    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>L2 регуляризация (&lambda;)</b>')
     MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>')
     MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
     MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value })
 
     this.AddEventListener(this.learningRateBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
     this.AddEventListener(this.learningRateBox, 'input', () => this.optimizer.SetLearningRate(+this.learningRateBox.value))
+    this.AddEventListener(this.regularizationBox, 'input', () => this.optimizer.SetRegularization(+this.regularizationBox.value))
     this.AddEventListener(this.activationBox, 'change', () => this.network.SetActivation(this.activationBox.value))
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
@@ -65,7 +68,7 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
     MakeLabeledBlock(dataSection, this.showDiscreteBox, 'Показать выход дискретно')
     MakeLabeledBlock(dataSection, this.regenerateButton, '', 'centered control-block')
 
-    this.AddEventListener(this.dataTypeBox, 'change', () => this.UpdateData())
+    this.AddEventListener(this.dataTypeBox, 'change', () => this.UpdateData(false))
     this.AddEventListener(this.dataTestPartBox, 'input', () => this.UpdateData(false))
     this.AddEventListener(this.dataNoisePartBox, 'input', () => this.UpdateData(false))
     this.AddEventListener(this.regenerateButton, 'click', () => this.UpdateData(false))
@@ -133,9 +136,10 @@ NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
 
 NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
     let learningRate = +this.learningRateBox.value
+    let regularization = +this.regularizationBox.value
     let algorithm = this.optimizerBox.value
 
-    this.optimizer = new Optimizer(learningRate, algorithm)
+    this.optimizer = new Optimizer(learningRate, regularization, algorithm)
 }
 
 NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true) {

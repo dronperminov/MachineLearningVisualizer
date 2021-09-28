@@ -129,3 +129,25 @@ FullyConnectedLayer.prototype.UpdateWeights = function(optimizer) {
         optimizer.Update(this.b[i], this.batchSize)
     }
 }
+
+FullyConnectedLayer.prototype.WeightInfo = function() {
+    let min = Infinity
+    let max = -Infinity
+    let avg = 0
+
+    for (let i = 0; i < this.outputs; i++) {
+        for (let j = 0; j < this.inputs; j++) {
+            min = Math.min(this.w[i][j].value, min)
+            max = Math.max(this.w[i][j].value, max)
+            avg += this.w[i][j].value
+        }
+
+        min = Math.min(this.b[i].value, min)
+        max = Math.max(this.b[i].value, max)
+        avg += this.b[i].value
+    }
+
+    avg /= (this.inputs + 1) * this.outputs
+
+    console.log(`min: ${min}, max: ${max}, avg: ${avg}`)
+}
