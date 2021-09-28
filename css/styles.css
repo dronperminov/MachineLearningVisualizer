@@ -54,6 +54,11 @@
     margin: 0 !important;
 }
 
+.no-h-padding {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 .table {
     display: table;
     width: 100%;

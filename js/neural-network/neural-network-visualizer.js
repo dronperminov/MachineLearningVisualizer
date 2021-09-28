@@ -1,12 +1,13 @@
 const NEURAL_NETWORK_DATA_SIZE = 500
+const NEURAL_NETWORK_MAX_NEURONS_IN_LAYER = 10
 
-function NeuralNetworkVisualizer(visualizerBox, viewBox, leftcontrolsBox, topControlsBox) {
-    this.visualizerBox = visualizerBox
+function NeuralNetworkVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
     this.viewBox = viewBox
     this.leftControlsBox = leftcontrolsBox
     this.topControlsBox = topControlsBox
 
     this.InitControls()
+    this.InitEvents()
 }
 
 NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
@@ -40,7 +41,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.AddEventListener(this.regularizationBox, 'input', () => this.optimizer.SetRegularization(+this.regularizationBox.value))
     this.AddEventListener(this.regularizationBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
 
-    this.AddEventListener(this.activationBox, 'change', () => { this.network.SetActivation(this.activationBox.value); this.DrawDataset() })
+    this.AddEventListener(this.activationBox, 'change', () => { this.network.SetActivation(this.activationBox.value); this.DrawDataset(); this.DrawNetworkArchitecture() })
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
 }
@@ -152,6 +153,7 @@ NeuralNetworkVisualizer.prototype.StepTrain = function() {
     this.AppendLoss(this.trainLosses, trainLoss, this.trainLossPath)
     this.AppendLoss(this.testLosses, testLoss, this.testLossPath)
     this.UpdateLossesInfo(trainLoss, testLoss)
+    this.DrawNetworkArchitecture()
 
     if (this.epoch % 4 == 0 || !this.isTraining) {
         this.DrawDataset()
@@ -226,6 +228,7 @@ NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true)
 
     if (needResetNetwork) {
         this.InitNetwork()
+        this.DrawNetworkArchitecture()
     }
 
     this.epoch = 0
@@ -316,6 +319,87 @@ NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
     MakeLabeledBlock(section, div, '', 'control-block no-margin')
 }
 
+NeuralNetworkVisualizer.prototype.MakeNetworkLayers = function() {
+    let width = this.networkSVG.clientWidth
+    let height = this.networkSVG.clientHeight
+    let radius = 22
+    let padding = 10
+
+    let layersCount = this.network.layers.length
+    let deltaWidth = Math.floor(width / layersCount)
+    let deltaHeight = Math.floor(height / NEURAL_NETWORK_MAX_NEURONS_IN_LAYER)
+    let layers = []
+
+    for (let i = 0; i < layersCount; i++) {
+        let size = this.network.layers[i].inputs
+        let layer = []
+
+        for (let j = 0; j < size; j++) {
+            let neuron = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+            let x = padding + radius + i * deltaWidth
+            let y = padding + radius + j * deltaHeight
+
+            neuron.setAttribute('cx', x)
+            neuron.setAttribute('cy', y)
+            neuron.setAttribute('r', radius)
+            neuron.setAttribute('fill', '#fff')
+            neuron.setAttribute('stroke', '#000')
+
+            layer.push(neuron)
+        }
+
+        layers.push(layer)
+    }
+
+    let out = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+    out.setAttribute('cx', padding + radius + layersCount * deltaWidth)
+    out.setAttribute('cy', padding + radius)
+    layers.push([out])
+
+    return layers
+}
+
+NeuralNetworkVisualizer.prototype.DrawNetworkLayers = function(layers) {
+    this.networkSVG.innerHTML = ''
+
+    for (let index = 0; index < layers.length - 1; index++) {
+        let layer1 = layers[index]
+        let layer2 = layers[index + 1]
+
+        for (let i = 0; i < layer1.length; i++) {
+            let x1 = +layer1[i].getAttribute('cx')
+            let y1 = +layer1[i].getAttribute('cy')
+
+            for (let j = 0; j < layer2.length; j++) {
+                let edge = document.createElementNS("http://www.w3.org/2000/svg", "path")
+                let weight = this.network.layers[index].w[j][i].value
+                let stroke = Math.max(0.5, Math.min(10, Math.abs(weight)))
+
+                let x2 = +layer2[j].getAttribute('cx')
+                let y2 = +layer2[j].getAttribute('cy')
+
+                edge.setAttribute('fill', 'none')
+                edge.setAttribute('stroke', weight > 0 ? '#dd7373' : '#7699d4')
+                edge.setAttribute('stroke-width', stroke + 'px')
+                edge.setAttribute('d', `M${x1} ${y1} C ${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}`)
+                this.networkSVG.appendChild(edge)
+            }
+        }
+    }
+}
+
+NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
+    let layers = this.MakeNetworkLayers()
+
+    this.DrawNetworkLayers(layers)
+
+    for (let layer of layers) {
+        for (let neuron of layer) {
+            this.networkSVG.appendChild(neuron)
+        }
+    }
+}
+
 NeuralNetworkVisualizer.prototype.InitView = function() {
     this.dataCanvas = document.createElement('canvas')
     this.dataCtx = this.dataCanvas.getContext('2d')
@@ -331,17 +415,17 @@ NeuralNetworkVisualizer.prototype.InitView = function() {
 
     let table = MakeDiv('', '', 'table')
     let cell1 = MakeDiv('', '', 'table-cell')
-    let cell2 = MakeDiv('', '', 'table-cell')
+    let cell2 = MakeDiv('', '', 'table-cell no-margin')
 
     cell1.appendChild(this.networkSVG)
-    cell2.style.width = (this.dataCanvas.width + 10) + 'px'
+    cell2.style.width = this.dataCanvas.width + 'px'
 
     table.appendChild(cell1)
     table.appendChild(cell2)
 
-    MakeLabeledBlock(cell2, this.dataCanvas, '', 'control-block no-margin')
-    MakeLabeledBlock(cell2, this.showTestBox, 'Показать тестовые данные', 'control-block no-margin')
-    MakeLabeledBlock(cell2, this.showDiscreteBox, 'Показать выход дискретно')
+    MakeLabeledBlock(cell2, this.dataCanvas, '', 'control-block no-margin no-h-padding')
+    MakeLabeledBlock(cell2, this.showTestBox, 'Показать тестовые данные', 'control-block no-margin no-h-padding')
+    MakeLabeledBlock(cell2, this.showDiscreteBox, 'Показать выход дискретно', 'control-block no-h-padding')
     this.AppendLossComponents(cell2)
     this.viewBox.appendChild(table)
 
@@ -357,6 +441,10 @@ NeuralNetworkVisualizer.prototype.InitControls = function() {
     this.InitView()
 
     this.UpdateData()
+}
+
+NeuralNetworkVisualizer.prototype.InitEvents = function() {
+    window.addEventListener('resize', () => this.DrawNetworkArchitecture())
 }
 
 NeuralNetworkVisualizer.prototype.AddEventListener = function(component, eventName, event, needCall = false) {
