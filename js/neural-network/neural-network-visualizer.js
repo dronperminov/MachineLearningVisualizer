@@ -13,7 +13,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.leftControlsBox.appendChild(trainSection)
 
     this.learningRateBox = MakeNumberInput('learning-rate-box', 0.01, 0.001, 0.001, 10)
-    this.regularizationBox = MakeNumberInput('regularization-box', 0.01, 0.001, 0, 10)
+    this.regularizationBox = MakeNumberInput('regularization-box', 0.001, 0.001, 0, 10)
     this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'tanh')
 
     this.learningRateBox.setAttribute('pattern', '\d+')
@@ -36,7 +36,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.AddEventListener(this.learningRateBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
     this.AddEventListener(this.learningRateBox, 'input', () => this.optimizer.SetLearningRate(+this.learningRateBox.value))
     this.AddEventListener(this.regularizationBox, 'input', () => this.optimizer.SetRegularization(+this.regularizationBox.value))
-    this.AddEventListener(this.activationBox, 'change', () => this.network.SetActivation(this.activationBox.value))
+    this.AddEventListener(this.activationBox, 'change', () => { this.network.SetActivation(this.activationBox.value); this.DrawDataset() })
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
 }
@@ -113,7 +113,10 @@ NeuralNetworkVisualizer.prototype.StepTrain = function() {
 
     this.epoch++
 
-    this.DrawDataset()
+    if (this.epoch % 4 == 0 || !this.isTraining) {
+        this.DrawDataset()
+        this.DrawLosses()
+    }
 
     console.log('epoch: ' + this.epoch, 'loss: ' + loss)
 }
@@ -126,12 +129,39 @@ NeuralNetworkVisualizer.prototype.LoopTrain = function() {
     requestAnimationFrame(() => this.LoopTrain())
 }
 
+NeuralNetworkVisualizer.prototype.ConvertDataToNetwork = function(data) {
+    let result = { x: [], y: [], length: data.length }
+
+    for (let i = 0; i < data.length; i++) {
+        result.x[i] = this.PointToVector(data.points[i].x, data.points[i].y)
+        result.y[i] = [data.labels[i] == 0 ? 1 : -1]
+    }
+
+    return result
+}
+
+NeuralNetworkVisualizer.prototype.UpdateCanvasData = function() {
+    let canvasData = []
+
+    for (let i = 0; i < this.dataCanvas.height; i++) {
+        for (let j = 0; j < this.dataCanvas.width; j++) {
+            let x = j * 2 / this.dataCanvas.width - 1
+            let y = i * 2 / this.dataCanvas.height - 1
+
+            canvasData.push(this.PointToVector(x, y))
+        }
+    }
+
+    return canvasData
+}
+
 NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     let trainData = this.ConvertDataToNetwork(this.trainData)
     let testData = this.ConvertDataToNetwork(this.testData)
 
     this.batchSize = +this.batchSizeBox.value
     this.batches = this.SplitOnBatches(trainData, this.batchSize)
+    this.canvasData = this.UpdateCanvasData()
 }
 
 NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
@@ -183,22 +213,11 @@ NeuralNetworkVisualizer.prototype.TrainNetwork = function() {
     }
 }
 
-NeuralNetworkVisualizer.prototype.PointToVector = function(p) {
-    // return [p.x, p.y, Math.sin(p.x), Math.sin(p.y)]
-    // return [Math.sin(p.x), Math.sin(p.y)]
-    // return [p.x, p.y]
-    return [p.x, p.y, p.x * p.x, p.y * p.y, p.x * p.y]
-}
-
-NeuralNetworkVisualizer.prototype.ConvertDataToNetwork = function(data) {
-    let result = { x: [], y: [], length: data.length }
-
-    for (let i = 0; i < data.length; i++) {
-        result.x[i] = this.PointToVector(data.points[i])
-        result.y[i] = [data.labels[i] == 0 ? 1 : -1]
-    }
-
-    return result
+NeuralNetworkVisualizer.prototype.PointToVector = function(x, y) {
+    // return [x, y, Math.sin(x), Math.sin(y)]
+    // return [Math.sin(x), Math.sin(y)]
+    // return [x, y]
+    return [x, y, x * x, y * y, x * y]
 }
 
 NeuralNetworkVisualizer.prototype.InitTopControls = function() {
@@ -272,23 +291,15 @@ NeuralNetworkVisualizer.prototype.DrawNetwork = function(ctx, canvas, colors) {
     let white = [255, 255, 255]
     let isDiscrete = this.showDiscreteBox.checked
 
-    this.network.SetBatchSize(1)
+    for (let i = 0; i < canvas.height * canvas.width; i++) {
+        let output = this.network.Predict(this.canvasData[i])[0]
+        let label = output > 0 ? 0 : 1
+        let color = isDiscrete ? colors[label] : this.MixColor(colors[label], white, Math.abs(output))
 
-    for (let i = 0; i < canvas.height; i++) {
-        for (let j = 0; j < canvas.width; j++) {
-            let x = j * 2 / canvas.width - 1
-            let y = i * 2 / canvas.height - 1
-            let point = { x: x, y: y }
-
-            let output = this.network.Forward([this.PointToVector(point)])[0][0]
-            let label = output > 0 ? 0 : 1
-            let color = isDiscrete ? colors[label] : this.MixColor(colors[label], white, Math.abs(output))
-
-            data.data[index++] = color[0]
-            data.data[index++] = color[1]
-            data.data[index++] = color[2]
-            index++
-        }
+        data.data[index++] = color[0]
+        data.data[index++] = color[1]
+        data.data[index++] = color[2]
+        index++
     }
 
     ctx.putImageData(data, 0, 0)

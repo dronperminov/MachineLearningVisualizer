@@ -41,6 +41,15 @@ NeuralNetwork.prototype.Forward = function(x) {
     return this.layers[this.layers.length - 1].output
 }
 
+NeuralNetwork.prototype.Predict = function(x) {
+    x = this.layers[0].ForwardOnce(x)
+
+    for (let i = 1; i < this.layers.length; i++)
+        x = this.layers[i].ForwardOnce(x)
+
+    return x
+}
+
 NeuralNetwork.prototype.CalculateLoss = function(y, t, deltas, L) {
     let loss = 0
 

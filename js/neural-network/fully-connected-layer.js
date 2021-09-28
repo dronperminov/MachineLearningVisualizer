@@ -79,6 +79,19 @@ FullyConnectedLayer.prototype.Activate = function(batchIndex, i, value) {
     }
 }
 
+FullyConnectedLayer.prototype.ActivateOnce = function(value) {
+    if (this.activation == 'sigmoid')
+        return 1 / (1 + Math.exp(-value))
+
+    if (this.activation == 'tanh')
+        return Math.tanh(value)
+
+    if (this.activation == 'relu')
+        return Math.max(0, value)
+
+    return value
+}
+
 FullyConnectedLayer.prototype.Forward = function(x) {
     for (let batchIndex = 0; batchIndex < this.batchSize; batchIndex++) {
         for (let i = 0; i < this.outputs; i++) {
@@ -90,6 +103,21 @@ FullyConnectedLayer.prototype.Forward = function(x) {
             this.Activate(batchIndex, i, sum)
         }
     }
+}
+
+FullyConnectedLayer.prototype.ForwardOnce = function(x) {
+    let output = []
+
+    for (let i = 0; i < this.outputs; i++) {
+        let sum = this.b[i].value
+
+        for (let j = 0; j < this.inputs; j++)
+            sum += this.w[i][j].value * x[j]
+
+        output[i] = this.ActivateOnce(sum)
+    }
+
+    return output
 }
 
 FullyConnectedLayer.prototype.Backward = function(dout, x, calc_dX) {
