@@ -1,5 +1,5 @@
 .control-block {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     padding: 5px;
     user-select: none;
 }
@@ -43,6 +43,10 @@
 .control-block input[type="submit"]:hover {
     border: 2px solid #90caf9;
     color: #90caf9;
+}
+
+.control-block hr {
+    margin-top: 0;
 }
 
 .controls-section {
