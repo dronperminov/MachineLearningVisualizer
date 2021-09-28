@@ -4,10 +4,7 @@ function FullyConnectedLayer(inputs, outputs, activation) {
     this.activation = activation
 
     this.w = [] // весовые коэффициенты
-    this.dw = [] // градиенты весовых коэффициентов
-
     this.b = [] // веса смещения
-    this.db = [] // градиенты весов смещения
 
     this.InitWeights()
 }
@@ -19,16 +16,12 @@ FullyConnectedLayer.prototype.GenerateWeight = function() {
 
 FullyConnectedLayer.prototype.InitWeights = function() {
     for (let i = 0; i < this.outputs; i++) {
+        this.b[i] = new Weight()
         this.w[i] = []
-        this.dw[i] = []
 
         for (let j = 0; j < this.inputs; j++) {
-            this.w[i][j] = this.GenerateWeight()
-            this.dw[i][j] = 0
+            this.w[i][j] = new Weight()
         }
-
-        this.b[i] = this.GenerateWeight()
-        this.db[i] = 0
     }
 }
 
@@ -53,6 +46,10 @@ FullyConnectedLayer.prototype.SetBatchSize = function(batchSize) {
             this.dx[i][j] = 0
         }
     }
+}
+
+FullyConnectedLayer.prototype.SetActivation = function(activation) {
+    this.activation = activation
 }
 
 FullyConnectedLayer.prototype.Activate = function(batchIndex, i, value) {
@@ -85,10 +82,10 @@ FullyConnectedLayer.prototype.Activate = function(batchIndex, i, value) {
 FullyConnectedLayer.prototype.Forward = function(x) {
     for (let batchIndex = 0; batchIndex < this.batchSize; batchIndex++) {
         for (let i = 0; i < this.outputs; i++) {
-            let sum = this.b[i]
+            let sum = this.b[i].value
 
             for (let j = 0; j < this.inputs; j++)
-                sum += this.w[i][j] * x[batchIndex][j]
+                sum += this.w[i][j].value * x[batchIndex][j]
 
             this.Activate(batchIndex, i, sum)
         }
@@ -101,9 +98,9 @@ FullyConnectedLayer.prototype.Backward = function(dout, x, calc_dX) {
             let delta = dout[batchIndex][i] * this.df[batchIndex][i]
 
             for (let j = 0; j < this.inputs; j++)
-                this.dw[i][j] += delta * x[batchIndex][j]
+                this.w[i][j].grad += delta * x[batchIndex][j]
 
-            this.db[i] += delta
+            this.b[i].grad += delta
         }
     }
 
@@ -115,7 +112,7 @@ FullyConnectedLayer.prototype.Backward = function(dout, x, calc_dX) {
             let sum = 0
 
             for (let i = 0; i < this.outputs; i++)
-                sum += this.w[i][j] * dout[batchIndex][i] * this.df[batchIndex][i]
+                sum += this.w[i][j].value * dout[batchIndex][i] * this.df[batchIndex][i]
 
             this.dx[batchIndex][j] = sum
         }
@@ -126,11 +123,9 @@ FullyConnectedLayer.prototype.Backward = function(dout, x, calc_dX) {
 FullyConnectedLayer.prototype.UpdateWeights = function(optimizer) {
     for (let i = 0; i < this.outputs; i++) {
         for (let j = 0; j < this.inputs; j++) {
-            this.w[i][j] = optimizer.Update(this.w[i][j], this.dw[i][j] / this.batchSize)
-            this.dw[i][j] = 0
+            optimizer.Update(this.w[i][j], this.batchSize)
         }
 
-        this.b[i] = optimizer.Update(this.b[i], this.db[i] / this.batchSize)
-        this.db[i] = 0
+        optimizer.Update(this.b[i], this.batchSize)
     }
 }

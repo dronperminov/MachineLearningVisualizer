@@ -26,6 +26,12 @@ NeuralNetwork.prototype.SetBatchSize = function(batchSize) {
     }
 }
 
+NeuralNetwork.prototype.SetActivation = function(activation) {
+    for (let i = 0; i < this.layers.length - 1; i++) {
+        this.layers[i].SetActivation(activation)
+    }
+}
+
 NeuralNetwork.prototype.Forward = function(x) {
     this.layers[0].Forward(x)
 
@@ -80,6 +86,8 @@ NeuralNetwork.prototype.TrainEpoch = function(batches, batchSize, optimizer, L) 
     for (let i = 0; i < batches.length; i++) {
         loss += this.TrainOnBatch(batches.x[i], batches.y[i], optimizer, L)
     }
+
+    optimizer.UpdateEpoch()
 
     return loss / batches.length / batchSize
 }

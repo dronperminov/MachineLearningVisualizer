@@ -12,17 +12,30 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     let trainSection = MakeSection('Параметры обучения')
     this.leftControlsBox.appendChild(trainSection)
 
-    this.learningRateBox = MakeNumberInput('learning-rate-box', 0.1, 0.001, 0.001, 10)
-    this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'relu')
-    this.optimizerBox = MakeSelect('optimizer-box', {'sgd': 'SGD', 'sgdm': 'SGD momentum', 'adam': 'Adam', 'nag': 'NAG'}, 'adam')
-    this.batchSizeBox = MakeNumberInput('batch-size-box', 1, 1, 1, 32, 'range')
+    this.learningRateBox = MakeNumberInput('learning-rate-box', 0.01, 0.001, 0.001, 10)
+    this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'tanh')
+
+    this.learningRateBox.setAttribute('pattern', '\d+')
+    this.optimizerBox = MakeSelect('optimizer-box', {
+        'sgd': 'SGD',
+        'sgdm': 'SGD momentum',
+        'adam': 'Adam',
+        'nag': 'NAG',
+        'nadam' : 'NAdam'
+    }, 'nadam')
+
+    this.batchSizeBox = MakeNumberInput('batch-size-box', 4, 1, 1, 32, 'range')
 
     MakeLabeledBlock(trainSection, this.learningRateBox, '<b>Скорость обучения</b>')
     MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>')
-    // MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
+    MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
     MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value })
 
-    this.AddEventListener(this.activationBox, 'change', () => this.ResetTrain())
+    this.AddEventListener(this.learningRateBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
+    this.AddEventListener(this.learningRateBox, 'input', () => this.optimizer.SetLearningRate(+this.learningRateBox.value))
+    this.AddEventListener(this.activationBox, 'change', () => this.network.SetActivation(this.activationBox.value))
+    this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
+    this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
 }
 
 NeuralNetworkVisualizer.prototype.InitDataSection = function() {
@@ -34,7 +47,7 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
         CIRCLE_DATA: 'окружность',
         SQUARE_DATA: 'квадраты',
         AREAS_DATA: 'две области'
-    }, CIRCLE_DATA, () => this.UpdateDataType())
+    }, SPIRAL_DATA, () => this.UpdateDataType())
 
     this.dataTestPartBox = MakeNumberInput('data-test-part-box', 0.5, 0.05, 0.1, 0.9, 'range')
     this.dataNoisePartBox = MakeNumberInput('data-noise-part-box', 0.0, 0.05, 0, 0.5, 'range')
@@ -53,9 +66,8 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
     MakeLabeledBlock(dataSection, this.regenerateButton, '', 'centered control-block')
 
     this.AddEventListener(this.dataTypeBox, 'change', () => this.UpdateData())
-    this.AddEventListener(this.dataTestPartBox, 'input', () => this.UpdateData())
-    this.AddEventListener(this.dataNoisePartBox, 'input', () => this.UpdateData())
-    this.AddEventListener(this.batchSizeBox, 'input', () => this.ResetTrain(false))
+    this.AddEventListener(this.dataTestPartBox, 'input', () => this.UpdateData(false))
+    this.AddEventListener(this.dataNoisePartBox, 'input', () => this.UpdateData(false))
     this.AddEventListener(this.regenerateButton, 'click', () => this.UpdateData(false))
     this.AddEventListener(this.showTestBox, 'change', () => this.DrawDataset())
     this.AddEventListener(this.showDiscreteBox, 'change', () => this.DrawDataset())
@@ -63,16 +75,16 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
 
 NeuralNetworkVisualizer.prototype.InitNetwork = function() {
     let activation = this.activationBox.value
-    this.network = new NeuralNetwork(2)
+    this.network = new NeuralNetwork(5)
 
-    this.network.AddLayer({ 'name': 'fc', 'size': 5, 'activation': activation })
-    this.network.AddLayer({ 'name': 'fc', 'size': 3, 'activation': activation })
+    this.network.AddLayer({ 'name': 'fc', 'size': 8, 'activation': activation })
+    this.network.AddLayer({ 'name': 'fc', 'size': 8, 'activation': activation })
     this.network.AddLayer({ 'name': 'fc', 'size': 1, 'activation': 'tanh' })
 
     this.isTraining = false
 }
 
-NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize) {
+NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize, isRandom = false) {
     let x = []
     let y = []
 
@@ -81,8 +93,9 @@ NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize) {
         let batchY = []
 
         for (j = 0; j < batchSize; j++) {
-            batchX.push(data.x[(i + j) % data.length])
-            batchY.push(data.y[(i + j) % data.length])
+            let index = isRandom ? Math.floor(Math.random() * data.length) : (i + j) % data.length
+            batchX.push(data.x[index])
+            batchY.push(data.y[index])
         }
 
         x.push(batchX)
@@ -93,11 +106,10 @@ NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize) {
 }
 
 NeuralNetworkVisualizer.prototype.StepTrain = function() {
-    let learningRate = +this.learningRateBox.value
-    let optimizer = new Optimizer(learningRate)
-    let loss = this.network.TrainEpoch(this.batches, this.batchSize, optimizer, MSE)
+    let loss = this.network.TrainEpoch(this.batches, this.batchSize, this.optimizer, MSE)
 
     this.epoch++
+
     this.DrawDataset()
 
     console.log('epoch: ' + this.epoch, 'loss: ' + loss)
@@ -119,9 +131,17 @@ NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     this.batches = this.SplitOnBatches(trainData, this.batchSize)
 }
 
+NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
+    let learningRate = +this.learningRateBox.value
+    let algorithm = this.optimizerBox.value
+
+    this.optimizer = new Optimizer(learningRate, algorithm)
+}
+
 NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true) {
     this.StopTrain()
     this.UpdateNetworkData()
+    this.InitOptimizer()
 
     this.epoch = 0
 
@@ -159,11 +179,18 @@ NeuralNetworkVisualizer.prototype.TrainNetwork = function() {
     }
 }
 
+NeuralNetworkVisualizer.prototype.PointToVector = function(p) {
+    // return [p.x, p.y, Math.sin(p.x), Math.sin(p.y)]
+    // return [Math.sin(p.x), Math.sin(p.y)]
+    // return [p.x, p.y]
+    return [p.x, p.y, p.x * p.x, p.y * p.y, p.x * p.y]
+}
+
 NeuralNetworkVisualizer.prototype.ConvertDataToNetwork = function(data) {
     let result = { x: [], y: [], length: data.length }
 
     for (let i = 0; i < data.length; i++) {
-        result.x[i] = [data.points[i].x, data.points[i].y]
+        result.x[i] = this.PointToVector(data.points[i])
         result.y[i] = [data.labels[i] == 0 ? 1 : -1]
     }
 
@@ -247,8 +274,9 @@ NeuralNetworkVisualizer.prototype.DrawNetwork = function(ctx, canvas, colors) {
         for (let j = 0; j < canvas.width; j++) {
             let x = j * 2 / canvas.width - 1
             let y = i * 2 / canvas.height - 1
+            let point = { x: x, y: y }
 
-            let output = this.network.Forward([[x, y]])[0][0]
+            let output = this.network.Forward([this.PointToVector(point)])[0][0]
             let label = output > 0 ? 0 : 1
             let color = isDiscrete ? colors[label] : this.MixColor(colors[label], white, Math.abs(output))
 
