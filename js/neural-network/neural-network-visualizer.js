@@ -397,14 +397,6 @@ NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
 }
 
 NeuralNetworkVisualizer.prototype.ChangeInputUsed = function(index) {
-    let count = 0
-    for (let i = 0; i < this.inputUsed.length; i++)
-        if (this.inputUsed[i])
-            count++
-
-    if (count == 1 && this.inputUsed[index])
-        return
-
     this.inputUsed[index] = !this.inputUsed[index]
     this.UpdateNetworkData()
     this.DrawNetworkArchitecture()
