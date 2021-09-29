@@ -147,6 +147,15 @@ FullyConnectedLayer.prototype.Backward = function(dout, x, calc_dX) {
     }
 }
 
+FullyConnectedLayer.prototype.ZeroGradients = function() {
+    for (let i = 0; i < this.outputs; i++) {
+        for (let j = 0; j < this.inputs; j++)
+            this.w[i][j].grad = 0
+
+        this.b[i].grad = 0
+    }
+}
+
 // обновление весовых коэффициентов
 FullyConnectedLayer.prototype.UpdateWeights = function(optimizer) {
     for (let i = 0; i < this.outputs; i++) {

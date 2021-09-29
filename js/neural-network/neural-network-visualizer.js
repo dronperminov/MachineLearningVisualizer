@@ -387,7 +387,6 @@ NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
     this.lossSVG.appendChild(this.testLossPath)
 
     let div = MakeDiv('loss-block', '')
-    div.appendChild(document.createElement('hr'))
     div.appendChild(this.trainLossBox)
     div.appendChild(document.createElement('br'))
     div.appendChild(this.testLossBox)
@@ -537,7 +536,9 @@ NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
             let y1 = +this.layers[index][i].getAttribute('cy')
 
             for (let j = 0; j < this.layers[index + 1].length; j++) {
-                let weight = this.network.layers[index].w[j][i].value
+                let weight = this.network.layers[index].w[j][i]
+                weight = this.showGradientsBox.value == 'grads' ? weight.grad : weight.value
+
                 let stroke = Math.max(0.5, Math.min(7, Math.abs(weight)))
 
                 let x2 = +this.layers[index + 1][j].getAttribute('cx')
@@ -549,7 +550,16 @@ NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
                     this.weights[index][i][j].setAttribute('stroke', 'none')
                 }
                 else {
-                    this.weights[index][i][j].setAttribute('stroke', weight > 0 ? '#dd7373' : '#7699d4')
+                    let color = '#000'
+
+                    if (weight > 0.01) {
+                        color = '#dd7373'
+                    }
+                    else if (weight < -0.01) {
+                        color = '#7699d4'
+                    }
+
+                    this.weights[index][i][j].setAttribute('stroke', color)
                     this.weights[index][i][j].setAttribute('stroke-width', stroke + 'px')
                 }
 
@@ -598,6 +608,7 @@ NeuralNetworkVisualizer.prototype.InitView = function() {
 
     this.showTestBox = MakeCheckBox('show-test-data-box')
     this.showDiscreteBox = MakeCheckBox('show-discrete-box')
+    this.showGradientsBox = MakeSelect('show-gradients-box', { 'weights': 'весовые коэффициенты', 'grads': 'градиенты'}, 'weights')
 
     this.networkSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
     this.networkSVG.style.width = '100%'
@@ -615,12 +626,14 @@ NeuralNetworkVisualizer.prototype.InitView = function() {
 
     MakeLabeledBlock(cell2, this.dataCanvas, '', 'control-block no-margin no-h-padding')
     MakeLabeledBlock(cell2, this.showTestBox, 'Показать тестовые данные', 'control-block no-margin no-h-padding')
-    MakeLabeledBlock(cell2, this.showDiscreteBox, 'Показать выход дискретно', 'control-block no-h-padding')
+    MakeLabeledBlock(cell2, this.showDiscreteBox, 'Показать выход дискретно', 'control-block no-margin no-h-padding')
+    MakeLabeledBlock(cell2, this.showGradientsBox, 'Отображать в связях:', 'control-block no-margin no-h-padding')
     this.AppendLossComponents(cell2)
     this.viewBox.appendChild(table)
 
     this.AddEventListener(this.showTestBox, 'change', () => this.DrawDataset())
     this.AddEventListener(this.showDiscreteBox, 'change', () => this.DrawDataset())
+    this.AddEventListener(this.showGradientsBox, 'change', () => { this.DrawDataset(); this.DrawNetworkArchitecture() })
 }
 
 NeuralNetworkVisualizer.prototype.InitControls = function() {

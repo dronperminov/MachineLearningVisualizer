@@ -32,6 +32,12 @@ NeuralNetwork.prototype.SetActivation = function(activation) {
     }
 }
 
+NeuralNetwork.prototype.ZeroGradients = function() {
+    for (let layer of this.layers) {
+        layer.ZeroGradients()
+    }
+}
+
 NeuralNetwork.prototype.Forward = function(x) {
     this.layers[0].Forward(x)
 
@@ -87,6 +93,8 @@ NeuralNetwork.prototype.TrainOnBatch = function(x, y, optimizer, L) {
     let deltas = []
 
     let loss = this.CalculateLoss(output, y, deltas, L)
+
+    this.ZeroGradients()
 
     if (last == 0) {
         this.layers[last].Backward(deltas, x, true)
