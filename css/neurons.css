@@ -1,0 +1,40 @@
+.neuron {
+    font-size: 15px;
+    user-select: none;
+}
+
+.used-neuron {
+    stroke-width: 2px;
+    stroke: #000;
+}
+
+.non-used-neuron {
+    stroke-width: 1px;
+    stroke: #888;
+}
+
+.used-neuron-text {
+    fill: #000;
+    pointer-events: none;
+}
+
+.non-used-neuron-text {
+    fill: #888;
+    pointer-events: none;
+}
+
+.used-neuron:hover {
+    stroke: #888;
+}
+
+.non-used-neuron:hover {
+    stroke: #000;
+}
+
+.used-neuron:hover + .used-neuron-text {
+    fill: #888;
+}
+
+.non-used-neuron:hover + .non-used-neuron-text {
+    fill: #000;
+}

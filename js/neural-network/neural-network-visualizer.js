@@ -6,6 +6,10 @@ function NeuralNetworkVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
     this.leftControlsBox = leftcontrolsBox
     this.topControlsBox = topControlsBox
 
+    this.inputNames = ['x', 'y', 'x²', 'y²', 'xy', 'sin x', 'sin y']
+    this.inputUsed = [true, true, true, true, true, false, false]
+    this.activationsText = { 'sigmoid': 'σ', 'tanh': 'tanh', 'relu': 'ReLU'}
+
     this.InitControls()
     this.InitEvents()
 }
@@ -41,7 +45,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.AddEventListener(this.regularizationBox, 'input', () => this.optimizer.SetRegularization(+this.regularizationBox.value))
     this.AddEventListener(this.regularizationBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
 
-    this.AddEventListener(this.activationBox, 'change', () => { this.network.SetActivation(this.activationBox.value); this.DrawDataset(); this.DrawNetworkArchitecture() })
+    this.AddEventListener(this.activationBox, 'change', () => this.ChangeNetworkActivation())
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
 }
@@ -75,13 +79,30 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
     this.AddEventListener(this.regenerateButton, 'click', () => this.UpdateData(false))
 }
 
+NeuralNetworkVisualizer.prototype.InitNetworkArchitecture = function() {
+    this.networkSVG.innerHTML = ''
+
+    this.layers = this.MakeNetworkNeurons()
+    this.weights = this.MakeNetworkWeights()
+    this.texts = this.MakeNetworkTexts()
+
+    for (let i = 0; i < this.layers.length; i++) {
+        for (let j = 0; j < this.layers[i].length; j++) {
+            this.networkSVG.appendChild(this.layers[i][j])
+            this.networkSVG.appendChild(this.texts[i][j])
+        }
+    }
+
+    this.DrawNetworkArchitecture()
+}
+
 NeuralNetworkVisualizer.prototype.InitNetwork = function() {
     let activation = this.activationBox.value
-    this.network = new NeuralNetwork(5)
+    this.network = new NeuralNetwork(7)
     this.lossFunction = new LossFunction()
 
     this.network.AddLayer({ 'name': 'fc', 'size': 8, 'activation': activation })
-    this.network.AddLayer({ 'name': 'fc', 'size': 8, 'activation': activation })
+    this.network.AddLayer({ 'name': 'fc', 'size': 4, 'activation': activation })
     this.network.AddLayer({ 'name': 'fc', 'size': 1, 'activation': 'tanh' })
 
     this.isTraining = false
@@ -106,6 +127,19 @@ NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize, isR
     }
 
     return { x: x, y: y, length: x.length }
+}
+
+NeuralNetworkVisualizer.prototype.ChangeNetworkActivation = function() {
+    let activation = this.activationBox.value
+
+    this.network.SetActivation(activation)
+
+    for (let i = 1; i < this.layers.length; i++)
+        for (let j=  0; j < this.layers[i].length; j++)
+            this.texts[i][j].textContent = this.activationsText[activation]
+
+    this.DrawDataset()
+    this.DrawNetworkArchitecture()
 }
 
 NeuralNetworkVisualizer.prototype.ResetLosses = function() {
@@ -228,6 +262,7 @@ NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true)
 
     if (needResetNetwork) {
         this.InitNetwork()
+        this.InitNetworkArchitecture()
         this.DrawNetworkArchitecture()
     }
 
@@ -267,10 +302,13 @@ NeuralNetworkVisualizer.prototype.TrainNetwork = function() {
 }
 
 NeuralNetworkVisualizer.prototype.PointToVector = function(x, y) {
-    // return [x, y, Math.sin(x), Math.sin(y)]
-    // return [Math.sin(x), Math.sin(y)]
-    // return [x, y]
-    return [x, y, x * x, y * y, x * y]
+    let vector = [x, y, x * x, y * y, x * y, Math.sin(x), Math.sin(y)]
+
+    for (let i = 0; i < vector.length; i++)
+        if (!this.inputUsed[i])
+            vector[i] = 0
+
+    return vector
 }
 
 NeuralNetworkVisualizer.prototype.InitTopControls = function() {
@@ -319,7 +357,22 @@ NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
     MakeLabeledBlock(section, div, '', 'control-block no-margin')
 }
 
-NeuralNetworkVisualizer.prototype.MakeNetworkLayers = function() {
+NeuralNetworkVisualizer.prototype.ChangeInputUsed = function(index) {
+    let count = 0
+    for (let i = 0; i < this.inputUsed.length; i++)
+        if (this.inputUsed[i])
+            count++
+
+    if (count == 1 && this.inputUsed[index])
+        return
+
+    this.inputUsed[index] = !this.inputUsed[index]
+    this.UpdateNetworkData()
+    this.DrawNetworkArchitecture()
+    this.DrawDataset()
+}
+
+NeuralNetworkVisualizer.prototype.MakeNetworkNeurons = function() {
     let width = this.networkSVG.clientWidth
     let height = this.networkSVG.clientHeight
     let radius = 22
@@ -345,6 +398,10 @@ NeuralNetworkVisualizer.prototype.MakeNetworkLayers = function() {
             neuron.setAttribute('fill', '#fff')
             neuron.setAttribute('stroke', '#000')
 
+            if (i == 0) {
+                neuron.onclick = () => this.ChangeInputUsed(j)
+            }
+
             layer.push(neuron)
         }
 
@@ -359,44 +416,86 @@ NeuralNetworkVisualizer.prototype.MakeNetworkLayers = function() {
     return layers
 }
 
-NeuralNetworkVisualizer.prototype.DrawNetworkLayers = function(layers) {
-    this.networkSVG.innerHTML = ''
+NeuralNetworkVisualizer.prototype.MakeNetworkWeights = function() {
+    let weights = []
 
-    for (let index = 0; index < layers.length - 1; index++) {
-        let layer1 = layers[index]
-        let layer2 = layers[index + 1]
+    for (let index = 0; index < this.layers.length - 1; index++) {
+        weights[index] = []
 
-        for (let i = 0; i < layer1.length; i++) {
-            let x1 = +layer1[i].getAttribute('cx')
-            let y1 = +layer1[i].getAttribute('cy')
+        for (let i = 0; i < this.layers[index].length; i++) {
+            weights[index][i] = []
 
-            for (let j = 0; j < layer2.length; j++) {
+            for (let j = 0; j < this.layers[index + 1].length; j++) {
                 let edge = document.createElementNS("http://www.w3.org/2000/svg", "path")
-                let weight = this.network.layers[index].w[j][i].value
-                let stroke = Math.max(0.5, Math.min(10, Math.abs(weight)))
-
-                let x2 = +layer2[j].getAttribute('cx')
-                let y2 = +layer2[j].getAttribute('cy')
-
-                edge.setAttribute('fill', 'none')
-                edge.setAttribute('stroke', weight > 0 ? '#dd7373' : '#7699d4')
-                edge.setAttribute('stroke-width', stroke + 'px')
-                edge.setAttribute('d', `M${x1} ${y1} C ${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}`)
                 this.networkSVG.appendChild(edge)
+                weights[index][i][j] = edge
             }
         }
     }
+
+    return weights
+}
+
+NeuralNetworkVisualizer.prototype.MakeNetworkTexts = function() {
+    let texts = []
+
+    for (let i = 0; i < this.layers.length; i++) {
+        texts[i] = []
+
+        for (let j = 0; j < this.layers[i].length; j++) {
+            let text = document.createElementNS("http://www.w3.org/2000/svg", "text")
+
+            if (i == 0) {
+                text.textContent = this.inputNames[j]
+            }
+            else {
+                text.textContent = this.activationsText[this.activationBox.value]
+            }
+
+            text.setAttribute('x', this.layers[i][j].getAttribute('cx'))
+            text.setAttribute('y', this.layers[i][j].getAttribute('cy'))
+            text.setAttribute('dominant-baseline', 'middle')
+            text.setAttribute('text-anchor', 'middle')
+            text.setAttribute('class', 'neuron')
+
+            texts[i].push(text)
+        }
+    }
+
+    return texts
 }
 
 NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
-    let layers = this.MakeNetworkLayers()
+    for (let index = 0; index < this.layers.length - 1; index++) {
+        for (let i = 0; i < this.layers[index].length; i++) {
+            let x1 = +this.layers[index][i].getAttribute('cx')
+            let y1 = +this.layers[index][i].getAttribute('cy')
 
-    this.DrawNetworkLayers(layers)
+            for (let j = 0; j < this.layers[index + 1].length; j++) {
+                let weight = this.network.layers[index].w[j][i].value
+                let stroke = Math.max(0.5, Math.min(10, Math.abs(weight)))
 
-    for (let layer of layers) {
-        for (let neuron of layer) {
-            this.networkSVG.appendChild(neuron)
+                let x2 = +this.layers[index + 1][j].getAttribute('cx')
+                let y2 = +this.layers[index + 1][j].getAttribute('cy')
+
+                this.weights[index][i][j].setAttribute('fill', 'none')
+
+                if (index == 0 && !this.inputUsed[i])  {
+                    this.weights[index][i][j].setAttribute('stroke', 'none')
+                }
+                else {
+                    this.weights[index][i][j].setAttribute('stroke', weight > 0 ? '#dd7373' : '#7699d4')
+                    this.weights[index][i][j].setAttribute('stroke-width', stroke + 'px')
+                }
+
+                this.weights[index][i][j].setAttribute('d', `M${x1} ${y1} C ${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}`)
+            }
         }
+    }
+
+    for (let i = 0; i < this.inputNames.length; i++) {
+        this.layers[0][i].setAttribute('class', 'neuron ' + (this.inputUsed[i] ? 'used-neuron' : 'non-used-neuron'))
+        this.texts[0][i].setAttribute('class',  'neuron ' + (this.inputUsed[i] ? 'used-neuron-text' : 'non-used-neuron-text'))
     }
 }
 
@@ -444,7 +543,7 @@ NeuralNetworkVisualizer.prototype.InitControls = function() {
 }
 
 NeuralNetworkVisualizer.prototype.InitEvents = function() {
-    window.addEventListener('resize', () => this.DrawNetworkArchitecture())
+    window.addEventListener('resize', () => this.InitNetworkArchitecture())
 }
 
 NeuralNetworkVisualizer.prototype.AddEventListener = function(component, eventName, event, needCall = false) {
