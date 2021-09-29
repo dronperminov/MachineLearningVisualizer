@@ -25,10 +25,12 @@
 
 .used-neuron:hover {
     stroke: #888;
+    cursor: pointer;
 }
 
 .non-used-neuron:hover {
     stroke: #90caf9;
+    cursor: pointer;
 }
 
 .used-neuron:hover + .used-neuron-text {
@@ -37,4 +39,24 @@
 
 .non-used-neuron:hover + .non-used-neuron-text {
     fill: #90caf9;
+}
+
+.button {
+    fill: #ddd;
+}
+
+.button-text {
+    fill: #555;
+    pointer-events: none;
+    font-size: 25px;
+    user-select: none;
+}
+
+.button:hover {
+    fill: #90caf9;
+    cursor: pointer;
+}
+
+.button:hover + .button-text {
+    fill: #fff;
 }

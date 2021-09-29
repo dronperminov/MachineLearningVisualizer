@@ -38,6 +38,54 @@ NeuralNetwork.prototype.ZeroGradients = function() {
     }
 }
 
+NeuralNetwork.prototype.ChangeNeurons = function(index, delta) {
+    let prevLayer = this.layers[index]
+    let nextLayer = this.layers[index + 1]
+
+    let size = prevLayer.outputs + delta
+
+    this.layers[index] = new FullyConnectedLayer(prevLayer.inputs, size, prevLayer.activation)
+    this.layers[index + 1] = new FullyConnectedLayer(size, nextLayer.outputs, nextLayer.activation)
+
+    for (let i = 0; i < size && i < prevLayer.outputs; i++) {
+        this.layers[index].b[i] = prevLayer.b[i].Copy()
+
+        for (let j = 0; j < prevLayer.inputs; j++) {
+            this.layers[index].w[i][j] = prevLayer.w[i][j].Copy()
+        }
+    }
+
+    for (let i = 0; i < nextLayer.outputs; i++) {
+        this.layers[index].b[i] = nextLayer.b[i].Copy()
+
+        for (let j = 0; j < size && j < nextLayer.inputs; j++) {
+            this.layers[index + 1].w[i][j] = nextLayer.w[i][j].Copy()
+        }
+    }
+}
+
+NeuralNetwork.prototype.RemoveLayer = function(index) {
+    let prevLayer = this.layers[index]
+    let layer = this.layers[index + 1]
+
+    this.layers.splice(index, 1)
+    this.layers[index] = new FullyConnectedLayer(prevLayer.inputs, layer.outputs, layer.activation)
+
+    for (let i = 0; i < layer.outputs; i++) {
+        this.layers[index].b[i] = layer.b[i].Copy()
+
+        for (let j = 0; j < prevLayer.inputs && j < layer.inputs; j++) {
+            this.layers[index].w[i][j] = layer.w[i][j].Copy()
+        }
+    }
+}
+
+NeuralNetwork.prototype.Reset = function() {
+    for (let layer of this.layers) {
+        layer.InitWeights()
+    }
+}
+
 NeuralNetwork.prototype.Forward = function(x) {
     this.layers[0].Forward(x)
 
