@@ -82,14 +82,31 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
 NeuralNetworkVisualizer.prototype.InitNetworkArchitecture = function() {
     this.networkSVG.innerHTML = ''
 
+    this.neuronRadius = 22
+
     this.layers = this.MakeNetworkNeurons()
     this.weights = this.MakeNetworkWeights()
     this.texts = this.MakeNetworkTexts()
+    this.canvases = this.MakeNetworkCanvases()
+    this.canvasesCtx = []
+    this.canvasesData = []
 
     for (let i = 0; i < this.layers.length; i++) {
+        this.canvasesCtx[i] = []
+        this.canvasesData[i] = []
+
         for (let j = 0; j < this.layers[i].length; j++) {
             this.networkSVG.appendChild(this.layers[i][j])
             this.networkSVG.appendChild(this.texts[i][j])
+
+            if (i == 0 || i == this.layers.length - 1)
+                continue
+
+            this.networkSVG.parentElement.insertBefore(this.canvases[i][j], this.networkSVG)
+            this.canvasesCtx[i].push(this.canvases[i][j].getContext('2d'))
+            this.canvasesCtx[i][j].fillStyle = '#fff'
+            this.canvasesCtx[i][j].fillRect(0, 0, this.canvases[i][j].width, this.canvases[i][j].height)
+            this.canvasesData[i].push(this.canvasesCtx[i][j].getImageData(0, 0, this.canvases[i][j].width, this.canvases[i][j].height))
         }
     }
 
@@ -235,6 +252,25 @@ NeuralNetworkVisualizer.prototype.UpdateLossesInfo = function(trainLoss, testLos
     this.testLossBox.innerHTML = 'Ошибка на test: ' + Math.round(testLoss * 10000) / 10000
 }
 
+NeuralNetworkVisualizer.prototype.GetNeuronsData = function() {
+    let data = []
+    let points = []
+
+    let size = 2 * this.neuronRadius + 1
+
+    for (let i = -this.neuronRadius; i <= this.neuronRadius; i++) {
+        for (let j = -this.neuronRadius; j <= this.neuronRadius; j++) {
+            if (i*i + j*j > (this.neuronRadius + 2) * (this.neuronRadius + 2))
+                continue
+
+            data.push(this.PointToVector(j * 2 / size, i * 2 / size))
+            points.push({ x: j + this.neuronRadius, y: i + this.neuronRadius })
+        }
+    }
+
+    return {data: data, points: points, length: data.length}
+}
+
 NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     this.trainNetworkData = this.ConvertDataToNetwork(this.trainData)
     this.testNetworkData = this.ConvertDataToNetwork(this.testData)
@@ -242,6 +278,7 @@ NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     this.batchSize = +this.batchSizeBox.value
     this.batches = this.SplitOnBatches(this.trainNetworkData, this.batchSize)
     this.canvasData = this.UpdateCanvasData()
+    this.neuronsData = this.GetNeuronsData()
 
     let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
     let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
@@ -302,6 +339,9 @@ NeuralNetworkVisualizer.prototype.TrainNetwork = function() {
 }
 
 NeuralNetworkVisualizer.prototype.PointToVector = function(x, y) {
+    x *= 5
+    y *= 5
+
     let vector = [x, y, x * x, y * y, x * y, Math.sin(x), Math.sin(y)]
 
     for (let i = 0; i < vector.length; i++)
@@ -375,7 +415,6 @@ NeuralNetworkVisualizer.prototype.ChangeInputUsed = function(index) {
 NeuralNetworkVisualizer.prototype.MakeNetworkNeurons = function() {
     let width = this.networkSVG.clientWidth
     let height = this.networkSVG.clientHeight
-    let radius = 22
     let padding = 10
 
     let layersCount = this.network.layers.length
@@ -389,14 +428,15 @@ NeuralNetworkVisualizer.prototype.MakeNetworkNeurons = function() {
 
         for (let j = 0; j < size; j++) {
             let neuron = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-            let x = padding + radius + i * deltaWidth
-            let y = padding + radius + j * deltaHeight
+            let x = padding + this.neuronRadius + i * deltaWidth
+            let y = padding + this.neuronRadius + j * deltaHeight
 
             neuron.setAttribute('cx', x)
             neuron.setAttribute('cy', y)
-            neuron.setAttribute('r', radius)
+            neuron.setAttribute('r', this.neuronRadius)
             neuron.setAttribute('fill', '#fff')
             neuron.setAttribute('stroke', '#000')
+            neuron.setAttribute('stroke-width', '2px')
 
             if (i == 0) {
                 neuron.onclick = () => this.ChangeInputUsed(j)
@@ -409,8 +449,8 @@ NeuralNetworkVisualizer.prototype.MakeNetworkNeurons = function() {
     }
 
     let out = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-    out.setAttribute('cx', padding + radius + layersCount * deltaWidth)
-    out.setAttribute('cy', padding + radius)
+    out.setAttribute('cx', padding + this.neuronRadius + layersCount * deltaWidth)
+    out.setAttribute('cy', padding + this.neuronRadius)
     layers.push([out])
 
     return layers
@@ -465,6 +505,31 @@ NeuralNetworkVisualizer.prototype.MakeNetworkTexts = function() {
     return texts
 }
 
+NeuralNetworkVisualizer.prototype.MakeNetworkCanvases = function() {
+    let canvases = []
+
+    for (let i = 1; i < this.layers.length - 1; i++) {
+        canvases[i] = []
+
+        for (let j = 0; j < this.layers[i].length; j++) {
+            let canvas = document.createElement('canvas')
+
+            canvas.style.position = 'absolute'
+            canvas.style.top = (this.layers[i][j].getAttribute('cy') - this.neuronRadius + 1) + 'px'
+            canvas.style.left = (this.layers[i][j].getAttribute('cx') - this.neuronRadius + 1) + 'px'
+            canvas.style.border = 'none'
+            canvas.style.borderRadius = '100%'
+
+            canvas.width = (this.neuronRadius * 2 - 2)
+            canvas.height = (this.neuronRadius * 2 - 2)
+
+            canvases[i].push(canvas)
+        }
+    }
+
+    return canvases
+}
+
 NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
     for (let index = 0; index < this.layers.length - 1; index++) {
         for (let i = 0; i < this.layers[index].length; i++) {
@@ -473,7 +538,7 @@ NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
 
             for (let j = 0; j < this.layers[index + 1].length; j++) {
                 let weight = this.network.layers[index].w[j][i].value
-                let stroke = Math.max(0.5, Math.min(10, Math.abs(weight)))
+                let stroke = Math.max(0.5, Math.min(7, Math.abs(weight)))
 
                 let x2 = +this.layers[index + 1][j].getAttribute('cx')
                 let y2 = +this.layers[index + 1][j].getAttribute('cy')
@@ -496,6 +561,32 @@ NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
     for (let i = 0; i < this.inputNames.length; i++) {
         this.layers[0][i].setAttribute('class', 'neuron ' + (this.inputUsed[i] ? 'used-neuron' : 'non-used-neuron'))
         this.texts[0][i].setAttribute('class',  'neuron ' + (this.inputUsed[i] ? 'used-neuron-text' : 'non-used-neuron-text'))
+    }
+}
+
+NeuralNetworkVisualizer.prototype.DrawNetworkNeurons = function() {
+    let isDiscrete = this.showDiscreteBox.checked
+
+    for (let index = 0; index < this.neuronsData.length; index++) {
+        let outputs = this.network.PredictLayers(this.neuronsData.data[index])
+        let point = this.neuronsData.points[index]
+
+        for (let i = 1; i < this.layers.length - 1; i++) {
+            for (let j = 0; j < this.layers[i].length; j++) {
+                let color = this.GetColorByOutput(outputs[i - 1][j], isDiscrete)
+                let index = (point.y * this.canvases[i][j].width + point.x) * 4
+
+                this.canvasesData[i][j].data[index] = color[0]
+                this.canvasesData[i][j].data[index + 1] = color[1]
+                this.canvasesData[i][j].data[index + 2] = color[2]
+            }
+        }
+    }
+
+    for (let i = 1; i < this.layers.length - 1; i++) {
+        for (let j = 0; j < this.layers[i].length; j++) {
+            this.canvasesCtx[i][j].putImageData(this.canvasesData[i][j], 0, 0)
+        }
     }
 }
 
@@ -542,8 +633,18 @@ NeuralNetworkVisualizer.prototype.InitControls = function() {
     this.UpdateData()
 }
 
+NeuralNetworkVisualizer.prototype.Resize = function() {
+    let cell = this.networkSVG.parentElement
+
+    while (cell.children[0].tagName == 'CANVAS')
+        cell.removeChild(cell.children[0])
+
+    this.InitNetworkArchitecture()
+    this.DrawNetworkNeurons()
+}
+
 NeuralNetworkVisualizer.prototype.InitEvents = function() {
-    window.addEventListener('resize', () => this.InitNetworkArchitecture())
+    window.addEventListener('resize', () => this.Resize())
 }
 
 NeuralNetworkVisualizer.prototype.AddEventListener = function(component, eventName, event, needCall = false) {
@@ -578,16 +679,22 @@ NeuralNetworkVisualizer.prototype.MixColor = function(color1, color2, t) {
     ]
 }
 
-NeuralNetworkVisualizer.prototype.DrawNetwork = function(ctx, canvas, colors) {
+NeuralNetworkVisualizer.prototype.GetColorByOutput = function(output, isDiscrete) {
+    let label = output > 0 ? 0 : 1
+    let colors = [[221, 115, 115], [118, 153, 212]]
+    let discreteColors = [[230, 155, 155], [142, 171, 219]]
+
+    return isDiscrete ? discreteColors[label] : this.MixColor(colors[label], [255, 255, 255], Math.abs(output))
+}
+
+NeuralNetworkVisualizer.prototype.DrawNetwork = function(ctx, canvas) {
     let data = ctx.getImageData(0, 0, canvas.width, canvas.height)
     let index = 0
-    let white = [255, 255, 255]
     let isDiscrete = this.showDiscreteBox.checked
 
     for (let i = 0; i < canvas.height * canvas.width; i++) {
         let output = this.network.Predict(this.canvasData[i])[0]
-        let label = output > 0 ? 0 : 1
-        let color = isDiscrete ? colors[label] : this.MixColor(colors[label], white, Math.abs(output))
+        let color = this.GetColorByOutput(output, isDiscrete)
 
         data.data[index++] = color[0]
         data.data[index++] = color[1]
@@ -599,14 +706,18 @@ NeuralNetworkVisualizer.prototype.DrawNetwork = function(ctx, canvas, colors) {
 }
 
 NeuralNetworkVisualizer.prototype.DrawDataset = function() {
-    this.dataCtx.fillRect(0, 0, this.dataCanvas.width, this.dataCanvas.height)
+    setTimeout(() => {
+        this.dataCtx.fillRect(0, 0, this.dataCanvas.width, this.dataCanvas.height)
 
-    this.DrawNetwork(this.dataCtx, this.dataCanvas, [[221, 115, 115], [118, 153, 212]])
-    this.DrawData(this.dataCtx, this.dataCanvas, this.trainData, ['#dd7373', '#7699d4'], '#fff', 3)
+        this.DrawNetwork(this.dataCtx, this.dataCanvas)
+        this.DrawData(this.dataCtx, this.dataCanvas, this.trainData, ['#dd7373', '#7699d4'], '#fff', 3)
 
-    if (this.showTestBox.checked) {
-        this.DrawData(this.dataCtx, this.dataCanvas, this.testData, ['#ba274a', '#2191fb'], '#000', 3)
-    }
+        if (this.showTestBox.checked) {
+            this.DrawData(this.dataCtx, this.dataCanvas, this.testData, ['#ba274a', '#2191fb'], '#000', 3)
+        }
+
+        this.DrawNetworkNeurons()
+    }, 0)
 }
 
 NeuralNetworkVisualizer.prototype.UpdateData = function(resetTrain = true) {

@@ -28,7 +28,7 @@
 }
 
 .non-used-neuron:hover {
-    stroke: #000;
+    stroke: #90caf9;
 }
 
 .used-neuron:hover + .used-neuron-text {
@@ -36,5 +36,5 @@
 }
 
 .non-used-neuron:hover + .non-used-neuron-text {
-    fill: #000;
+    fill: #90caf9;
 }
