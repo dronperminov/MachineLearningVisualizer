@@ -77,6 +77,40 @@ FullyConnectedLayer.prototype.Activate = function(batchIndex, i, value) {
             this.df[batchIndex][i] = 0
         }
     }
+    else if (this.activation == 'leaky-relu') {
+        if (value > 0) {
+            this.output[batchIndex][i] = value
+            this.df[batchIndex][i] = 1
+        }
+        else {
+            this.output[batchIndex][i] = 0.01 * value
+            this.df[batchIndex][i] = 0.01
+        }
+    }
+    else if (this.activation == 'elu') {
+        if (value > 0) {
+            this.output[batchIndex][i] = value
+            this.df[batchIndex][i] = 1
+        }
+        else {
+            this.output[batchIndex][i] = Math.exp(value) - 1
+            this.df[batchIndex][i] = Math.exp(value)
+        }
+    }
+    else if (this.activation == 'swish') {
+        let sigmoid = 1.0 / (1 + Math.exp(-value))
+
+        this.output[batchIndex][i] = value * sigmoid
+        this.df[batchIndex][i] = sigmoid + value * sigmoid * (1 - sigmoid)
+    }
+    else if (this.activation == 'softplus') {
+        this.output[batchIndex][i] = Math.log(1 + Math.exp(value))
+        this.df[batchIndex][i] = 1.0 / (1 + Math.exp(-value))
+    }
+    else if (this.activation == 'softsign') {
+        this.output[batchIndex][i] = value / (1 + Math.abs(value))
+        this.df[batchIndex][i] = 1.0 / Math.pow(1 + Math.abs(value), 2)
+    }
 }
 
 FullyConnectedLayer.prototype.ActivateOnce = function(value) {
@@ -88,6 +122,21 @@ FullyConnectedLayer.prototype.ActivateOnce = function(value) {
 
     if (this.activation == 'relu')
         return Math.max(0, value)
+
+    if (this.activation == 'leaky-relu')
+        return value > 0 ? value : 0.01 * value
+
+    if (this.activation == 'elu')
+        return value > 0 ? value : Math.exp(value) - 1
+
+    if (this.activation == 'swish')
+        return value / (1 + Math.exp(-value))
+
+    if (this.activation == 'softplus')
+        return Math.log(1 + Math.exp(value))
+
+    if (this.activation == 'softsign')
+        return value / (1 + Math.abs(value))
 
     return value
 }

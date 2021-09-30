@@ -20,7 +20,17 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
 
     this.learningRateBox = MakeNumberInput('learning-rate-box', 0.01, 0.001, 0.001, 10)
     this.regularizationBox = MakeNumberInput('regularization-box', 0.001, 0.001, 0, 10)
-    this.activationBox = MakeSelect('activation-box', {'tanh': 'tanh', 'sigmoid': 'sigmoid', 'relu': 'ReLU'}, 'tanh')
+    this.activationBox = MakeSelect('activation-box', {
+        'tanh': 'tanh',
+        'sigmoid': 'sigmoid',
+        'relu': 'ReLU',
+        '': 'linear',
+        'leaky-relu': 'LeakyReLU',
+        'elu': 'ELU',
+        'swish': 'swish',
+        'softplus': 'softplus',
+        'softsign': 'softsign'
+    }, 'tanh')
 
     this.learningRateBox.setAttribute('pattern', '\d+')
     this.optimizerBox = MakeSelect('optimizer-box', {
@@ -168,6 +178,11 @@ NeuralNetworkVisualizer.prototype.ChangeNetworkActivation = function() {
 
     this.DrawDataset()
     this.DrawNetworkArchitecture()
+
+    let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
+    let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
+
+    this.UpdateLossesInfo(trainLoss, testLoss)
 }
 
 NeuralNetworkVisualizer.prototype.ResetLosses = function() {
