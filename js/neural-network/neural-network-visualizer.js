@@ -14,6 +14,32 @@ function NeuralNetworkVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
     this.InitEvents()
 }
 
+NeuralNetworkVisualizer.prototype.InitButtonsSection = function() {
+    let buttonsSection = MakeSection('')
+    this.leftControlsBox.appendChild(buttonsSection)
+
+    let buttonsSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    buttonsSVG.setAttribute('width', '270')
+    buttonsSVG.setAttribute('height', '60')
+    buttonsSVG.style.userSelect = 'none'
+    buttonsSVG.style.marginBottom = '-5px'
+
+    this.resetButton = this.MakeCircleButton(80, 30, '⭮', 'Сбросить', 18, () => this.ResetTrain())
+    this.trainButton = this.MakeCircleButton(135, 30, '⏵', 'Обучить', 25, () => { this.TrainNetwork() })
+    this.stepButton = this.MakeCircleButton(190, 30, '⏯', 'Шаг', 18, () => { this.StopTrain(); this.StepTrain() })
+
+    buttonsSVG.appendChild(this.resetButton.button)
+    buttonsSVG.appendChild(this.resetButton.text)
+
+    buttonsSVG.appendChild(this.trainButton.button)
+    buttonsSVG.appendChild(this.trainButton.text)
+
+    buttonsSVG.appendChild(this.stepButton.button)
+    buttonsSVG.appendChild(this.stepButton.text)
+
+    buttonsSection.appendChild(buttonsSVG)
+}
+
 NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     let trainSection = MakeSection('Параметры обучения')
     this.leftControlsBox.appendChild(trainSection)
@@ -103,7 +129,7 @@ NeuralNetworkVisualizer.prototype.InitNetworkArchitecture = function() {
 
     this.neuronRadius = 22
 
-    this.buttons = this.MakeNetworkButtons()
+    this.buttons = this.MakeCircleButtons()
     this.layers = this.MakeNetworkNeurons()
     this.weights = this.MakeNetworkWeights()
     this.texts = this.MakeNetworkTexts()
@@ -346,7 +372,7 @@ NeuralNetworkVisualizer.prototype.StopTrain = function() {
     if (!this.isTraining)
         return
 
-    this.trainButton.value = 'Обучить'
+    this.trainButton.text.textContent = '⏵'
     this.isTraining = false
 }
 
@@ -354,7 +380,7 @@ NeuralNetworkVisualizer.prototype.StartTrain = function() {
     if (this.isTraining)
         return
 
-    this.trainButton.value = 'Остановить'
+    this.trainButton.text.textContent = '⏸'
     this.isTraining = true
 
     requestAnimationFrame(() => this.LoopTrain())
@@ -380,20 +406,6 @@ NeuralNetworkVisualizer.prototype.PointToVector = function(x, y) {
             vector[i] = 0
 
     return vector
-}
-
-NeuralNetworkVisualizer.prototype.InitTopControls = function() {
-    this.resetButton = MakeButton('reset-btn', 'Сбросить')
-    this.trainButton = MakeButton('train-btn', 'Обучить')
-    this.stepButton = MakeButton('step-btn', 'Шаг')
-
-    this.topControlsBox.appendChild(this.resetButton)
-    this.topControlsBox.appendChild(this.trainButton)
-    this.topControlsBox.appendChild(this.stepButton)
-
-    this.AddEventListener(this.resetButton, 'click', () => { this.ResetTrain() })
-    this.AddEventListener(this.trainButton, 'click', () => { this.TrainNetwork() })
-    this.AddEventListener(this.stepButton, 'click', () => { this.StopTrain(); this.StepTrain(); })
 }
 
 NeuralNetworkVisualizer.prototype.AppendLossComponents = function(section) {
@@ -440,7 +452,7 @@ NeuralNetworkVisualizer.prototype.ChangeInputUsed = function(index) {
 NeuralNetworkVisualizer.prototype.ChangeNeurons = function(layer, delta) {
     let size = this.network.layers[layer].outputs + delta
 
-    if (size < 1 || size > 9)
+    if (size < 1 || size > 10)
         return
 
     this.network.ChangeNeurons(layer, delta)
@@ -466,7 +478,7 @@ NeuralNetworkVisualizer.prototype.RemoveLayer = function(layer) {
     this.DrawDataset()
 }
 
-NeuralNetworkVisualizer.prototype.MakeNetworkButton = function(x, y, value, hint, radius, onclick) {
+NeuralNetworkVisualizer.prototype.MakeCircleButton = function(x, y, value, hint, radius, onclick) {
     let button = document.createElementNS("http://www.w3.org/2000/svg", "circle")
     button.setAttribute('cx', x)
     button.setAttribute('cy', y)
@@ -492,7 +504,7 @@ NeuralNetworkVisualizer.prototype.MakeNetworkButton = function(x, y, value, hint
     return {button: button, text: text}
 }
 
-NeuralNetworkVisualizer.prototype.MakeNetworkButtons = function() {
+NeuralNetworkVisualizer.prototype.MakeCircleButtons = function() {
     let padding = 10
     let radius = 14
 
@@ -504,9 +516,9 @@ NeuralNetworkVisualizer.prototype.MakeNetworkButtons = function() {
         let x = padding + this.neuronRadius + i * deltaWidth
         let y = padding + 10
 
-        buttons.push(this.MakeNetworkButton(x - 2 * radius - 3, y, '-', 'Удалить нейрон', radius, () => this.ChangeNeurons(i - 1, -1)))
-        buttons.push(this.MakeNetworkButton(x, y, '+', 'Добавить нейрон', radius, () => this.ChangeNeurons(i - 1, 1)))
-        buttons.push(this.MakeNetworkButton(x + 2 * radius + 3, y, '×', 'Удалить слой', radius, () => this.RemoveLayer(i - 1)))
+        buttons.push(this.MakeCircleButton(x - 2 * radius - 3, y, '-', 'Удалить нейрон', radius, () => this.ChangeNeurons(i - 1, -1)))
+        buttons.push(this.MakeCircleButton(x, y, '+', 'Добавить нейрон', radius, () => this.ChangeNeurons(i - 1, 1)))
+        buttons.push(this.MakeCircleButton(x + 2 * radius + 3, y, '×', 'Удалить слой', radius, () => this.RemoveLayer(i - 1)))
     }
 
     return buttons
@@ -520,7 +532,7 @@ NeuralNetworkVisualizer.prototype.MakeNetworkNeurons = function() {
 
     let layersCount = this.network.layers.length
     let deltaWidth = Math.floor(width / layersCount)
-    let deltaHeight = Math.floor(height / NEURAL_NETWORK_MAX_NEURONS_IN_LAYER)
+    let deltaHeight = Math.floor(height / (NEURAL_NETWORK_MAX_NEURONS_IN_LAYER + 1))
     let layers = []
 
     for (let i = 0; i < layersCount; i++) {
@@ -742,8 +754,7 @@ NeuralNetworkVisualizer.prototype.InitView = function() {
 }
 
 NeuralNetworkVisualizer.prototype.InitControls = function() {
-    this.InitTopControls()
-
+    this.InitButtonsSection()
     this.InitTrainSection()
     this.InitDataSection()
     this.InitNetwork()

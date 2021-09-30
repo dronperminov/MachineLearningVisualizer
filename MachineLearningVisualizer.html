@@ -66,8 +66,10 @@
             ClearBox(topControlsBox)
             ClearBox(viewBox)
 
-            if (type == 'neural-network')
+            if (type == 'neural-network') {
+                topControlsBox.style.display = 'none'
                 return new NeuralNetworkVisualizer(viewBox, leftControlsBox, topControlsBox)
+            }
 
             throw `unknown type "${type}"`
         }

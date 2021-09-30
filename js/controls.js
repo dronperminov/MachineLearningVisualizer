@@ -75,14 +75,16 @@ function MakeButton(id, text) {
 
 function MakeSection(text, className = 'controls-section') {
     let section = document.createElement('div')
-    let header = document.createElement('div')
-
     section.className = className
 
-    header.className = 'header'
-    header.innerHTML = text
+    if (text != '') {
+        let header = document.createElement('div')
+        header.className = 'header'
+        header.innerHTML = text
 
-    section.appendChild(header)
+        section.appendChild(header)
+    }
+
     return section
 }
 
