@@ -38,7 +38,11 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
         'sgdm': 'SGD momentum',
         'adam': 'Adam',
         'nag': 'NAG',
-        'nadam' : 'NAdam'
+        'nadam' : 'NAdam',
+        'adagrad': 'Adagrad',
+        'adamax': 'AdaMax',
+        'rmsprop': 'RMSprop',
+        'amsgrad': 'AMSgrad',
     }, 'nadam')
 
     this.batchSizeBox = MakeNumberInput('batch-size-box', 4, 1, 1, 32, 'range')
