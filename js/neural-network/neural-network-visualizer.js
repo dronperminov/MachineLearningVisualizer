@@ -463,9 +463,15 @@ NeuralNetworkVisualizer.prototype.ChangeNeurons = function(layer, delta) {
 
 NeuralNetworkVisualizer.prototype.AddLayer = function() {
     this.network.layers.pop()
-    let last = this.network.layers[this.network.layers.length - 1]
 
-    this.network.outputs = last.outputs
+    if (this.network.layers.length == 0) {
+        this.network.outputs = this.network.inputs
+    }
+    else {
+        let last = this.network.layers[this.network.layers.length - 1]
+        this.network.outputs = last.outputs
+    }
+
     this.network.AddLayer({ 'name': 'fc', 'size': 4, 'activation': this.activationBox.value })
     this.network.AddLayer({ 'name': 'fc', 'size': 1, 'activation': 'tanh' })
 
