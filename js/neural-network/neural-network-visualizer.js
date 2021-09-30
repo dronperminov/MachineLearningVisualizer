@@ -98,8 +98,9 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
         SPIRAL_DATA: 'спираль',
         CIRCLE_DATA: 'окружность',
         SQUARE_DATA: 'квадраты',
-        AREAS_DATA: 'две области'
-    }, SPIRAL_DATA, () => this.UpdateDataType())
+        AREAS_DATA: 'две области',
+        MOONS_DATA: 'moons'
+    }, MOONS_DATA)
 
     this.dataTestPartBox = MakeNumberInput('data-test-part-box', 0.5, 0.05, 0.1, 0.9, 'range')
     this.dataNoisePartBox = MakeNumberInput('data-noise-part-box', 0.0, 0.05, 0, 0.5, 'range')

@@ -2,6 +2,7 @@ const SPIRAL_DATA = 'SPIRAL_DATA'
 const CIRCLE_DATA = 'CIRCLE_DATA'
 const AREAS_DATA = 'AREAS_DATA'
 const SQUARE_DATA = 'SQUARE_DATA'
+const MOONS_DATA = 'MOONS_DATA'
 
 function DataGenerator(mode, noise = 0) {
     this.mode = mode
@@ -61,6 +62,20 @@ DataGenerator.prototype.GetCirclePoint = function(isSecond) {
     return { x: r * Math.sin(t), y: r * Math.cos(t) }
 }
 
+DataGenerator.prototype.GetMoonPoint = function(isSecond) {
+    let x0 = isSecond ? -1/6 : 1/6
+    let y0 = isSecond ? 0.3 : -0.3
+    let rx = this.Random(0.4, 0.5)
+    let ry = this.Random(0.9, 1.2)
+    let t = this.Random(-Math.PI / 2, Math.PI / 2)
+
+    if (isSecond) {
+        t += Math.PI
+    }
+
+    return { x: x0 + rx * Math.sin(t), y: y0 + ry * Math.cos(t) }
+}
+
 DataGenerator.prototype.GeneratePoints = function(count) {
     let points = []
     let labels = []
@@ -81,6 +96,9 @@ DataGenerator.prototype.GeneratePoints = function(count) {
         }
         else if (this.mode == AREAS_DATA) {
             point = this.GetRandomPointInCircle(isSecond ? this.center1 : this.center2, this.radius)
+        }
+        else if (this.mode == MOONS_DATA) {
+            point = this.GetMoonPoint(isSecond)
         }
         else {
             point = this.GetRandomPoint()
