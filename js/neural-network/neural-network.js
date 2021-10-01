@@ -38,6 +38,16 @@ NeuralNetwork.prototype.ZeroGradients = function() {
     }
 }
 
+NeuralNetwork.prototype.ZeroWeightParams = function() {
+    for (let layer of this.layers) {
+        layer.ZeroWeightParams()
+    }
+}
+
+NeuralNetwork.prototype.DisableNeuron = function(layer, neuron) {
+    this.layers[layer].disabled[neuron] ^= true
+}
+
 NeuralNetwork.prototype.ChangeNeurons = function(index, delta) {
     let prevLayer = this.layers[index]
     let nextLayer = this.layers[index + 1]
@@ -49,6 +59,7 @@ NeuralNetwork.prototype.ChangeNeurons = function(index, delta) {
 
     for (let i = 0; i < size && i < prevLayer.outputs; i++) {
         this.layers[index].b[i] = prevLayer.b[i].Copy()
+        this.layers[index].disabled[i] = prevLayer.disabled[i]
 
         for (let j = 0; j < prevLayer.inputs; j++) {
             this.layers[index].w[i][j] = prevLayer.w[i][j].Copy()
@@ -56,7 +67,8 @@ NeuralNetwork.prototype.ChangeNeurons = function(index, delta) {
     }
 
     for (let i = 0; i < nextLayer.outputs; i++) {
-        this.layers[index].b[i] = nextLayer.b[i].Copy()
+        this.layers[index + 1].b[i] = nextLayer.b[i].Copy()
+        this.layers[index + 1].disabled[i] = nextLayer.disabled[i]
 
         for (let j = 0; j < size && j < nextLayer.inputs; j++) {
             this.layers[index + 1].w[i][j] = nextLayer.w[i][j].Copy()
@@ -73,6 +85,7 @@ NeuralNetwork.prototype.RemoveLayer = function(index) {
 
     for (let i = 0; i < layer.outputs; i++) {
         this.layers[index].b[i] = layer.b[i].Copy()
+        this.layers[index].disabled[i] = layer.disabled[i]
 
         for (let j = 0; j < prevLayer.inputs && j < layer.inputs; j++) {
             this.layers[index].w[i][j] = layer.w[i][j].Copy()

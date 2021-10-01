@@ -5,6 +5,10 @@ function FullyConnectedLayer(inputs, outputs, activation) {
 
     this.w = [] // весовые коэффициенты
     this.b = [] // веса смещения
+    this.disabled = [] // отключенные нейроны
+
+    for (let i = 0; i < this.outputs; i++)
+        this.disabled[i] = false
 
     this.InitWeights()
 }
@@ -144,6 +148,12 @@ FullyConnectedLayer.prototype.ActivateOnce = function(value) {
 FullyConnectedLayer.prototype.Forward = function(x) {
     for (let batchIndex = 0; batchIndex < this.batchSize; batchIndex++) {
         for (let i = 0; i < this.outputs; i++) {
+            if (this.disabled[i]) {
+                this.output[batchIndex][i] = 0
+                this.df[batchIndex][i] = 0
+                continue
+            }
+
             let sum = this.b[i].value
 
             for (let j = 0; j < this.inputs; j++)
@@ -158,6 +168,11 @@ FullyConnectedLayer.prototype.ForwardOnce = function(x) {
     let output = []
 
     for (let i = 0; i < this.outputs; i++) {
+        if (this.disabled[i]) {
+            output[i] = 0
+            continue
+        }
+
         let sum = this.b[i].value
 
         for (let j = 0; j < this.inputs; j++)
@@ -205,9 +220,26 @@ FullyConnectedLayer.prototype.ZeroGradients = function() {
     }
 }
 
+FullyConnectedLayer.prototype.ZeroWeightParams = function() {
+    for (let i = 0; i < this.outputs; i++) {
+        for (let j = 0; j < this.inputs; j++) {
+            this.w[i][j].param1 = 0
+            this.w[i][j].param2 = 0
+            this.w[i][j].param3 = 0
+        }
+
+        this.b[i].param1 = 0
+        this.b[i].param2 = 0
+        this.b[i].param3 = 0
+    }
+}
+
 // обновление весовых коэффициентов
 FullyConnectedLayer.prototype.UpdateWeights = function(optimizer) {
     for (let i = 0; i < this.outputs; i++) {
+        if (this.disabled[i])
+            continue
+
         for (let j = 0; j < this.inputs; j++) {
             optimizer.Update(this.w[i][j], this.batchSize)
         }

@@ -8,7 +8,6 @@ function NeuralNetworkVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
 
     this.inputNames = ['x', 'y', 'x²', 'y²', 'xy', 'sin x', 'sin y']
     this.inputUsed = [true, true, true, true, true, false, false]
-    this.activationsText = { 'sigmoid': 'σ', 'tanh': 'tanh', 'relu': 'ReLU'}
 
     this.InitControls()
     this.InitEvents()
@@ -152,7 +151,9 @@ NeuralNetworkVisualizer.prototype.InitNetworkArchitecture = function() {
 
         for (let j = 0; j < this.layers[i].length; j++) {
             this.networkSVG.appendChild(this.layers[i][j])
-            this.networkSVG.appendChild(this.texts[i][j])
+
+            if (i == 0)
+                this.networkSVG.appendChild(this.texts[j])
 
             if (i == 0 || i == this.layers.length - 1)
                 continue
@@ -210,10 +211,6 @@ NeuralNetworkVisualizer.prototype.ChangeNetworkActivation = function() {
     let activation = this.activationBox.value
 
     this.network.SetActivation(activation)
-
-    for (let i = 1; i < this.layers.length; i++)
-        for (let j = 0; j < this.layers[i].length; j++)
-            this.texts[i][j].textContent = this.activationsText[activation]
 
     this.DrawDataset()
     this.DrawNetworkArchitecture()
@@ -358,6 +355,7 @@ NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
     let algorithm = this.optimizerBox.value
 
     this.optimizer = new Optimizer(learningRate, regularization, algorithm)
+    this.network.ZeroWeightParams()
 }
 
 NeuralNetworkVisualizer.prototype.ResetTrain = function(needResetNetwork = true) {
@@ -455,6 +453,12 @@ NeuralNetworkVisualizer.prototype.ChangeInputUsed = function(index) {
     this.inputUsed[index] = !this.inputUsed[index]
     this.UpdateNetworkData()
     this.DrawNetworkArchitecture()
+    this.DrawDataset()
+}
+
+NeuralNetworkVisualizer.prototype.DisableNeuron = function(layer, neuron) {
+    this.network.DisableNeuron(layer, neuron)
+    this.InitNetworkArchitecture()
     this.DrawDataset()
 }
 
@@ -569,6 +573,9 @@ NeuralNetworkVisualizer.prototype.MakeNetworkNeurons = function() {
             if (i == 0) {
                 neuron.onclick = () => this.ChangeInputUsed(j)
             }
+            else {
+                neuron.onclick = () => this.DisableNeuron(i - 1, j)
+            }
 
             layer.push(neuron)
         }
@@ -607,27 +614,17 @@ NeuralNetworkVisualizer.prototype.MakeNetworkWeights = function() {
 NeuralNetworkVisualizer.prototype.MakeNetworkTexts = function() {
     let texts = []
 
-    for (let i = 0; i < this.layers.length; i++) {
-        texts[i] = []
+    for (let i = 0; i < this.layers[0].length; i++) {
+        let text = document.createElementNS("http://www.w3.org/2000/svg", "text")
 
-        for (let j = 0; j < this.layers[i].length; j++) {
-            let text = document.createElementNS("http://www.w3.org/2000/svg", "text")
+        text.textContent = this.inputNames[i]
+        text.setAttribute('x', this.layers[0][i].getAttribute('cx'))
+        text.setAttribute('y', this.layers[0][i].getAttribute('cy'))
+        text.setAttribute('dominant-baseline', 'middle')
+        text.setAttribute('text-anchor', 'middle')
+        text.setAttribute('class', 'neuron')
 
-            if (i == 0) {
-                text.textContent = this.inputNames[j]
-            }
-            else {
-                text.textContent = this.activationsText[this.activationBox.value]
-            }
-
-            text.setAttribute('x', this.layers[i][j].getAttribute('cx'))
-            text.setAttribute('y', this.layers[i][j].getAttribute('cy'))
-            text.setAttribute('dominant-baseline', 'middle')
-            text.setAttribute('text-anchor', 'middle')
-            text.setAttribute('class', 'neuron')
-
-            texts[i].push(text)
-        }
+        texts.push(text)
     }
 
     return texts
@@ -647,6 +644,7 @@ NeuralNetworkVisualizer.prototype.MakeNetworkCanvases = function() {
             canvas.style.left = (this.layers[i][j].getAttribute('cx') - this.neuronRadius + 1) + 'px'
             canvas.style.border = 'none'
             canvas.style.borderRadius = '100%'
+            canvas.style.pointerEvents = 'none'
 
             canvas.width = (this.neuronRadius * 2 - 2)
             canvas.height = (this.neuronRadius * 2 - 2)
@@ -674,32 +672,39 @@ NeuralNetworkVisualizer.prototype.DrawNetworkArchitecture = function() {
                 let y2 = +this.layers[index + 1][j].getAttribute('cy')
 
                 this.weights[index][i][j].setAttribute('fill', 'none')
+                this.weights[index][i][j].setAttribute('d', `M${x1} ${y1} C ${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}`)
 
                 if (index == 0 && !this.inputUsed[i])  {
                     this.weights[index][i][j].setAttribute('stroke', 'none')
-                }
-                else {
-                    let color = '#000'
-
-                    if (weight > 0.01) {
-                        color = '#dd7373'
-                    }
-                    else if (weight < -0.01) {
-                        color = '#7699d4'
-                    }
-
-                    this.weights[index][i][j].setAttribute('stroke', color)
-                    this.weights[index][i][j].setAttribute('stroke-width', stroke + 'px')
+                    continue
                 }
 
-                this.weights[index][i][j].setAttribute('d', `M${x1} ${y1} C ${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}`)
+                if (index > 0 && this.network.layers[index - 1].disabled[i])  {
+                    this.weights[index][i][j].setAttribute('stroke', 'none')
+                    this.layers[index][i].setAttribute('class', 'neuron non-used-neuron')
+                    continue
+                }
+
+                this.layers[index][i].setAttribute('class', 'neuron used-neuron')
+
+                let color = '#000'
+
+                if (weight > 0.01) {
+                    color = '#dd7373'
+                }
+                else if (weight < -0.01) {
+                    color = '#7699d4'
+                }
+
+                this.weights[index][i][j].setAttribute('stroke', color)
+                this.weights[index][i][j].setAttribute('stroke-width', stroke + 'px')
             }
         }
     }
 
     for (let i = 0; i < this.inputNames.length; i++) {
         this.layers[0][i].setAttribute('class', 'neuron ' + (this.inputUsed[i] ? 'used-neuron' : 'non-used-neuron'))
-        this.texts[0][i].setAttribute('class',  'neuron ' + (this.inputUsed[i] ? 'used-neuron-text' : 'non-used-neuron-text'))
+        this.texts[i].setAttribute('class',  'neuron ' + (this.inputUsed[i] ? 'used-neuron-text' : 'non-used-neuron-text'))
     }
 }
 
