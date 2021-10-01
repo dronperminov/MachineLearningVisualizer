@@ -3,36 +3,39 @@
 <head>
     <meta charset="utf-8">
     <title>Machine learning visualizer</title>
+    <meta name="viewport" content="width=device-width, initial=scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/styles.css">
     <link rel="stylesheet" type="text/css" href="css/controls.css">
     <link rel="stylesheet" type="text/css" href="css/neurons.css">
 </head>
 <body>
-    <div class="visualizer">
-        <div class="left-controls">
-            <div class="control-block">
-                <label><b>ML алгоритм:</b><br>
-                <select id="algorithm-type-box" onchange="visualizer = GetVisualizerByType()">
-                    <option value="k-means">k-средних</option>
-                    <option value="neuron">Нейрон</option>
-                    <option value="neural-network" selected>Нейронная сеть</option>
-                    <option value="log-reg">Логистическая регрессия</option>
-                    <option value="svm">Метод опорных векторов (SVM)</option>
-                </select>
-                </label>
-            </div>
-
-            <div id="left-controls-box"></div>
-        </div>
-
-        <div class="main-view">
-            <div class="main-view-flex">
-                <div class="top-controls" id="top-controls-box">
-                    <span>top controls</span>
+    <div class="scrollable">
+        <div class="visualizer">
+            <div class="left-controls">
+                <div class="control-block">
+                    <label><b>ML алгоритм:</b><br>
+                    <select id="algorithm-type-box" onchange="visualizer = GetVisualizerByType()">
+                        <option value="k-means">k-средних</option>
+                        <option value="neuron">Нейрон</option>
+                        <option value="neural-network" selected>Нейронная сеть</option>
+                        <option value="log-reg">Логистическая регрессия</option>
+                        <option value="svm">Метод опорных векторов (SVM)</option>
+                    </select>
+                    </label>
                 </div>
 
-                <div class="visualizer-view" id="view-box"></div>
-            <div>
+                <div id="left-controls-box"></div>
+            </div>
+
+            <div class="main-view">
+                <div class="main-view-flex">
+                    <div class="top-controls" id="top-controls-box">
+                        <span>top controls</span>
+                    </div>
+
+                    <div class="visualizer-view" id="view-box"></div>
+                </div>
+            </div>
         </div>
     </div>
 

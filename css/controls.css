@@ -2,6 +2,7 @@
     margin-bottom: 8px;
     padding: 5px;
     user-select: none;
+    text-align: left;
 }
 
 .control-block input[type="text"],
@@ -13,6 +14,7 @@
     border: none;
     border-bottom: 1px solid #808080;
     padding: 0;
+    background: #fff;
 }
 
 .control-block input[type="text"]:focus,
