@@ -95,6 +95,22 @@ NeuralNetwork.prototype.Forward = function(x) {
     return this.layers[this.layers.length - 1].output
 }
 
+NeuralNetwork.prototype.Backward = function(x, deltas) {
+    let last = this.layers.length - 1
+
+    if (last == 0) {
+        this.layers[last].Backward(deltas, x, true)
+    }
+    else {
+        this.layers[last].Backward(deltas, this.layers[last - 1].output, true)
+
+        for (let i = last - 1; i > 0; i--)
+            this.layers[i].Backward(this.layers[i + 1].dx, this.layers[i - 1].output, true)
+
+        this.layers[0].Backward(this.layers[1].dx, x, false)
+    }
+}
+
 NeuralNetwork.prototype.Predict = function(x) {
     x = this.layers[0].ForwardOnce(x)
 
@@ -136,25 +152,12 @@ NeuralNetwork.prototype.CalculateLossOnData = function(data, L) {
 }
 
 NeuralNetwork.prototype.TrainOnBatch = function(x, y, optimizer, L) {
-    let last = this.layers.length - 1
     let output = this.Forward(x)
     let deltas = []
-
     let loss = this.CalculateLoss(output, y, deltas, L)
 
     this.ZeroGradients()
-
-    if (last == 0) {
-        this.layers[last].Backward(deltas, x, true)
-    }
-    else {
-        this.layers[last].Backward(deltas, this.layers[last - 1].output, true)
-
-        for (let i = last - 1; i > 0; i--)
-            this.layers[i].Backward(this.layers[i + 1].dx, this.layers[i - 1].output, true)
-
-        this.layers[0].Backward(this.layers[1].dx, x, false)
-    }
+    this.Backward(x, deltas)
 
     for (let layer of this.layers) {
         layer.UpdateWeights(optimizer)

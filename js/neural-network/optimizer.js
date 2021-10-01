@@ -1,7 +1,8 @@
-function Optimizer(learningRate, lambda = 0, algorithm = 'sgd') {
+function Optimizer(learningRate, lambda = 0, algorithm = 'sgd', regularizationType = 'l2') {
     this.learningRate = learningRate
     this.lambda = lambda
     this.algorithm = algorithm
+    this.regularizationType = regularizationType
     this.update = this.UpdateSGD
     this.epoch = 1
 
@@ -48,6 +49,10 @@ Optimizer.prototype.SetLearningRate = function(learningRate) {
 
 Optimizer.prototype.SetRegularization = function(lambda) {
     this.lambda = lambda
+}
+
+Optimizer.prototype.SetRegularizationType = function(regularizationType) {
+    this.regularizationType = regularizationType
 }
 
 Optimizer.prototype.UpdateSGD = function(weight, batchSize) {
@@ -115,7 +120,13 @@ Optimizer.prototype.UpdateAMSgrad = function(weight, batchSize) {
 }
 
 Optimizer.prototype.Update = function(weight, batchSize) {
-    weight.value -= this.learningRate * this.lambda / batchSize * weight.value
+    if (this.regularizationType == 'l1') {
+        weight.grad += this.lambda * Math.sign(weight.value)
+    }
+    else if (this.regularizationType == 'l2') {
+        weight.grad += this.lambda * weight.value
+    }
+
     this.update(weight, batchSize)
 }
 

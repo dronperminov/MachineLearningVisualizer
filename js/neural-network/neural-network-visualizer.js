@@ -46,6 +46,12 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
 
     this.learningRateBox = MakeNumberInput('learning-rate-box', 0.01, 0.001, 0.001, 10)
     this.regularizationBox = MakeNumberInput('regularization-box', 0.001, 0.001, 0, 10)
+
+    this.regularizationTypeBox = MakeSelect('regularization-type-box', {
+        'l1': 'L1',
+        'l2': 'L2',
+    }, 'l2')
+
     this.activationBox = MakeSelect('activation-box', {
         'tanh': 'tanh',
         'sigmoid': 'sigmoid',
@@ -74,7 +80,8 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.batchSizeBox = MakeNumberInput('batch-size-box', 4, 1, 1, 32, 'range')
 
     MakeLabeledBlock(trainSection, this.learningRateBox, '<b>Скорость обучения (&eta;)</b>')
-    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>L2 регуляризация (&lambda;)</b>')
+    MakeLabeledBlock(trainSection, this.regularizationTypeBox, '<b>Тип регуляризации</b>')
+    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>Коээфициент регуляризация (&lambda;)</b>')
     MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>')
     MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
     MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value }, 'control-block no-margin')
@@ -87,6 +94,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
 
     this.AddEventListener(this.activationBox, 'change', () => this.ChangeNetworkActivation())
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
+    this.AddEventListener(this.regularizationTypeBox, 'change', () => this.optimizer.SetRegularizationType(this.regularizationTypeBox.value))
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
 }
 
@@ -100,7 +108,7 @@ NeuralNetworkVisualizer.prototype.InitDataSection = function() {
         SQUARE_DATA: 'квадраты',
         AREAS_DATA: 'две области',
         MOONS_DATA: 'moons'
-    }, MOONS_DATA)
+    }, SPIRAL_DATA)
 
     this.dataTestPartBox = MakeNumberInput('data-test-part-box', 0.5, 0.05, 0.1, 0.9, 'range')
     this.dataNoisePartBox = MakeNumberInput('data-noise-part-box', 0.0, 0.05, 0, 0.5, 'range')
