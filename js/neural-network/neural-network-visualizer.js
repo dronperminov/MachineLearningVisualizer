@@ -47,6 +47,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.regularizationBox = MakeNumberInput('regularization-box', 0.001, 0.001, 0, 10)
 
     this.regularizationTypeBox = MakeSelect('regularization-type-box', {
+        'none': 'не используется',
         'l1': 'L1',
         'l2': 'L2',
     }, 'l2')
@@ -79,8 +80,8 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.batchSizeBox = MakeNumberInput('batch-size-box', 4, 1, 1, 32, 'range')
 
     MakeLabeledBlock(trainSection, this.learningRateBox, '<b>Скорость обучения (&eta;)</b>')
-    MakeLabeledBlock(trainSection, this.regularizationTypeBox, '<b>Тип регуляризации</b>')
-    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>Коээфициент регуляризация (&lambda;)</b>')
+    MakeLabeledBlock(trainSection, this.regularizationTypeBox, '<b>Регуляризация</b>')
+    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>Коээфициент регуляризации (&lambda;)</b>')
     MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>')
     MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
     MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value }, 'control-block no-margin')
@@ -93,7 +94,7 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
 
     this.AddEventListener(this.activationBox, 'change', () => this.ChangeNetworkActivation())
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
-    this.AddEventListener(this.regularizationTypeBox, 'change', () => this.optimizer.SetRegularizationType(this.regularizationTypeBox.value))
+    this.AddEventListener(this.regularizationTypeBox, 'change', () => this.ChangeRegularizationType())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
 }
 
@@ -219,6 +220,12 @@ NeuralNetworkVisualizer.prototype.ChangeNetworkActivation = function() {
     let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
 
     this.UpdateLossesInfo(trainLoss, testLoss)
+}
+
+NeuralNetworkVisualizer.prototype.ChangeRegularizationType = function() {
+    let type = this.regularizationTypeBox.value
+    this.optimizer.SetRegularizationType(type)
+    this.regularizationBox.parentNode.parentNode.style.display = type == 'none' ? 'none' : 'block'
 }
 
 NeuralNetworkVisualizer.prototype.ResetLosses = function() {
