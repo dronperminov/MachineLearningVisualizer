@@ -25,14 +25,27 @@ BackpropagationVisualizer.prototype.InitSizes = function() {
         'relu': 'ReLU',
     }, 'tanh')
 
+    this.targetBox = MakeNumberInput('input-count-box', -1, 0.01, -Infinity, Infinity, 'number')
+
+    this.lossBox = MakeSelect('loss-box', {
+        'mse': 'MSE',
+        'mae': 'MAE',
+        'bce': 'binary-cross-entropy',
+        'logcosh': 'Logcosh',
+    }, 'mse')
+
     this.animateButton = MakeButton('animate-btn', 'Запустить')
 
     MakeLabeledRange(sizesSection, this.inputCountBox, '<b>Количество входов</b>', () => this.inputCountBox.value )
     MakeLabeledBlock(sizesSection, this.activationBox, '<b>Функция активации</b><br>')
+    MakeLabeledBlock(sizesSection, this.lossBox, '<b>Функция потерь (ошибки)</b><br>')
+    MakeLabeledBlock(sizesSection, this.targetBox, '<b>Ожидаемое значение</b><br>')
     MakeLabeledBlock(sizesSection, this.animateButton, '', 'centered control-block')
 
     this.AddEventListener(this.inputCountBox, 'input', () => this.ChangeInputCount(), true)
     this.AddEventListener(this.activationBox, 'change', () => this.ChangeActivation())
+    this.AddEventListener(this.lossBox, 'change', () => this.Recalculate())
+    this.AddEventListener(this.targetBox, 'input', () => this.Recalculate())
     this.AddEventListener(this.animateButton, 'click', () => this.Animate())
 }
 
@@ -65,6 +78,10 @@ BackpropagationVisualizer.prototype.ExecuteCommand = function(command) {
 BackpropagationVisualizer.prototype.Animate = function() {
     let index = 0
 
+    for (let node of this.graph) {
+        node.InitVisibility()
+    }
+
     let interval = setInterval(() => {
         if (index >= this.commands.length) {
             clearInterval(interval)
@@ -89,6 +106,36 @@ BackpropagationVisualizer.prototype.MakeCommands = function() {
     }
 
     return commands
+}
+
+BackpropagationVisualizer.prototype.CalculateLoss = function(y, t) {
+    if (this.lossBox.value == 'mse')
+        return { delta: 2 * (y - t), loss: (y - t) * (y - t) }
+
+    if (this.lossBox.value == 'mae')
+        return { delta: Math.sign(y - t), loss: Math.abs(y - t) }
+
+    if (this.lossBox.value == 'logcosh')
+        return { delta: Math.tanh(y - t), loss: Math.log(Math.cosh(y - t)) }
+
+    return { delta: 0, loss: 0 }
+}
+
+BackpropagationVisualizer.prototype.Recalculate = function() {
+    let output = this.y.Evaluate()
+    let target = +this.targetBox.value
+    let loss = this.CalculateLoss(output, target)
+
+    console.log('output:', output)
+    console.log('target:', target)
+    console.log('loss:', loss.loss)
+    console.log('delta:', loss.delta)
+
+    this.y.Backward(loss.delta)
+
+    for (let node of this.graph) {
+        node.UpdateValues()
+    }
 }
 
 BackpropagationVisualizer.prototype.InitializeGraph = function() {
@@ -160,12 +207,18 @@ BackpropagationVisualizer.prototype.InitializeGraph = function() {
 
     this.graph.push(this.y)
 
-    this.y.Evaluate()
-    this.y.Backward(1)
-
     for (let i = this.graph.length - 1; i >= 0; i--)
         this.graph[i].ToSVG(this.svg)
 
+    this.x[0].SetValue(2)
+    this.w[0].SetValue(1)
+
+    this.x[1].SetValue(-0.5)
+    this.w[1].SetValue(3)
+
+    this.b.SetValue(-1.2)
+
+    this.Recalculate()
     this.commands = this.MakeCommands()
 }
 
@@ -174,5 +227,6 @@ BackpropagationVisualizer.prototype.ChangeInputCount = function() {
 }
 
 BackpropagationVisualizer.prototype.ChangeActivation = function() {
-    this.InitializeGraph()
+    this.y.type = this.activationBox.value
+    this.Recalculate()
 }

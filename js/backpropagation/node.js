@@ -197,6 +197,24 @@ Node.prototype.MakeDf = function(svg) {
     }
 }
 
+Node.prototype.InitVisibility = function() {
+    if (this.type != 'variable') {
+        this.VisibilityValue(false)
+    }
+
+    this.VisibilityGrad(false)
+    this.VisibilityDx(false)
+}
+
+Node.prototype.UpdateValues = function() {
+    this.valueText.textContent = this.Round(this.value)
+    this.gradText.textContent = this.Round(this.grad)
+
+    for (let i = 0; i < this.inputs.length; i++) {
+        this.dfTexts[i].textContent = this.Round(this.dx[i])
+    }
+}
+
 Node.prototype.ToSVG = function(svg) {
     if (this.type == 'variable') {
         this.valueRect = this.MakeRect(this.x - this.radius - 30, this.y - 15, 50, 25, '#d5e8d4', '#4caf50')
@@ -232,10 +250,5 @@ Node.prototype.ToSVG = function(svg) {
         svg.appendChild(this.dfTexts[i])
     }
 
-    if (this.type != 'variable') {
-        this.VisibilityValue(false)
-    }
-
-    this.VisibilityGrad(false)
-    this.VisibilityDx(false)
+    this.InitVisibility()
 }
