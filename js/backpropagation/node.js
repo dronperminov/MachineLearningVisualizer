@@ -133,11 +133,19 @@ Node.prototype.MakeLine = function(x1, y1, x2, y2) {
 Node.prototype.VisibilityValue = function(isVisible) {
     this.valueRect.style.display = isVisible ? '' : 'none'
     this.valueText.style.display = isVisible ? '' : 'none'
+
+    for (let i = 0; i < this.inputs.length; i++) {
+        this.dfLines[i].setAttribute('stroke', isVisible ? '#4caf50' : '#000')
+    }
 }
 
 Node.prototype.VisibilityGrad = function(isVisible) {
     this.gradRect.style.display = isVisible ? '' : 'none'
     this.gradText.style.display = isVisible ? '' : 'none'
+
+    for (let i = 0; i < this.inputs.length; i++) {
+        this.dfLines[i].setAttribute('stroke', isVisible ? '#ffc107' : '#000')
+    }
 
     if (this.type != 'variable')
         return
@@ -167,14 +175,16 @@ Node.prototype.Round = function(x) {
 }
 
 Node.prototype.MakeDf = function(svg) {
+    this.dfRects = []
+    this.dfTexts = []
+    this.dfLines = []
+
     for (let i = 0; i < this.inputs.length; i++) {
         let x1 = this.inputs[i].x
         let y1 = this.inputs[i].y
 
         let x2 = this.x
         let y2 = this.y
-
-        svg.appendChild(this.MakeLine(x1, y1, x2, y2))
 
         let x = (x1 + x2) / 2
         let y = (y1 + y2) / 2
@@ -192,6 +202,7 @@ Node.prototype.MakeDf = function(svg) {
             y -= 25
         }
 
+        this.dfLines.push(this.MakeLine(x1, y1, x2, y2))
         this.dfRects.push(this.MakeRect(x, y, 50, 25, '#f8cecc', '#f44336'))
         this.dfTexts.push(this.MakeText(x, y, this.Round(this.dx[i]), '#000', 14))
     }
@@ -230,10 +241,13 @@ Node.prototype.ToSVG = function(svg) {
         this.gradRect = this.MakeRect(this.x, this.y + 28, 50, 25, '#ffe6cc', '#ffc107')
         this.gradText = this.MakeText(this.x, this.y + 28, this.Round(this.grad), '#000', 14)
 
-        this.dfRects = []
-        this.dfTexts = []
-
         this.MakeDf(svg)
+    }
+
+    for (let i = 0; i < this.inputs.length; i++) {
+        svg.appendChild(this.dfLines[i])
+        svg.appendChild(this.dfRects[i])
+        svg.appendChild(this.dfTexts[i])
     }
 
     svg.appendChild(this.MakeCircle(this.x, this.y, this.radius))
@@ -244,11 +258,6 @@ Node.prototype.ToSVG = function(svg) {
 
     svg.appendChild(this.gradRect)
     svg.appendChild(this.gradText)
-
-    for (let i = 0; i < this.inputs.length; i++) {
-        svg.appendChild(this.dfRects[i])
-        svg.appendChild(this.dfTexts[i])
-    }
 
     this.InitVisibility()
 }

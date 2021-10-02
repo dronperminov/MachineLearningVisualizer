@@ -35,18 +35,26 @@ BackpropagationVisualizer.prototype.InitSizes = function() {
     }, 'mse')
 
     this.animateButton = MakeButton('animate-btn', 'Запустить')
+    this.changeValuesButton = MakeButton('change-values-btn', 'Сбросить')
 
     MakeLabeledRange(sizesSection, this.inputCountBox, '<b>Количество входов</b>', () => this.inputCountBox.value )
     MakeLabeledBlock(sizesSection, this.activationBox, '<b>Функция активации</b><br>')
     MakeLabeledBlock(sizesSection, this.lossBox, '<b>Функция потерь (ошибки)</b><br>')
     MakeLabeledBlock(sizesSection, this.targetBox, '<b>Ожидаемое значение</b><br>')
-    MakeLabeledBlock(sizesSection, this.animateButton, '', 'centered control-block')
+
+    let div = MakeDiv('', '')
+    div.appendChild(this.changeValuesButton)
+    div.appendChild(MakeSpan('', ' '))
+    div.appendChild(this.animateButton)
+
+    MakeLabeledBlock(sizesSection, div, '', 'centered control-block')
 
     this.AddEventListener(this.inputCountBox, 'input', () => this.ChangeInputCount(), true)
     this.AddEventListener(this.activationBox, 'change', () => this.ChangeActivation())
     this.AddEventListener(this.lossBox, 'change', () => this.Recalculate())
     this.AddEventListener(this.targetBox, 'input', () => this.Recalculate())
     this.AddEventListener(this.animateButton, 'click', () => this.Animate())
+    this.AddEventListener(this.changeValuesButton, 'click', () => this.InitializeGraph())
 }
 
 BackpropagationVisualizer.prototype.InitView = function() {
@@ -209,14 +217,6 @@ BackpropagationVisualizer.prototype.InitializeGraph = function() {
 
     for (let i = this.graph.length - 1; i >= 0; i--)
         this.graph[i].ToSVG(this.svg)
-
-    this.x[0].SetValue(2)
-    this.w[0].SetValue(1)
-
-    this.x[1].SetValue(-0.5)
-    this.w[1].SetValue(3)
-
-    this.b.SetValue(-1.2)
 
     this.Recalculate()
     this.commands = this.MakeCommands()
