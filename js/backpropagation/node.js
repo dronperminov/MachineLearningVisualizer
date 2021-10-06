@@ -250,8 +250,10 @@ Node.prototype.ToSVG = function(svg) {
         svg.appendChild(this.dfTexts[i])
     }
 
+    this.textNode = this.MakeText(this.x, this.y, this.text)
+
     svg.appendChild(this.MakeCircle(this.x, this.y, this.radius))
-    svg.appendChild(this.MakeText(this.x, this.y, this.text))
+    svg.appendChild(this.textNode)
 
     svg.appendChild(this.valueRect)
     svg.appendChild(this.valueText)

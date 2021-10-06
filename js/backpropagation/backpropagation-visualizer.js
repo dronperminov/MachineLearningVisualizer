@@ -3,7 +3,10 @@ function BackpropagationVisualizer(viewBox, leftcontrolsBox) {
     this.leftControlsBox = leftcontrolsBox
 
     this.InitView()
+    this.InitButtonsSection()
     this.InitSizes()
+
+    this.isStarted = false
 }
 
 BackpropagationVisualizer.prototype.AddEventListener = function(component, eventName, event, needCall = false) {
@@ -12,6 +15,32 @@ BackpropagationVisualizer.prototype.AddEventListener = function(component, event
     if (needCall) {
         event()
     }
+}
+
+BackpropagationVisualizer.prototype.InitButtonsSection = function() {
+    let buttonsSection = MakeSection('')
+    this.leftControlsBox.appendChild(buttonsSection)
+
+    let buttonsSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    buttonsSVG.setAttribute('width', '270')
+    buttonsSVG.setAttribute('height', '60')
+    buttonsSVG.style.userSelect = 'none'
+    buttonsSVG.style.marginBottom = '-5px'
+
+    this.resetButton = MakeCircleButton(80, 30, '⭮', 'Сбросить', 18, () => { this.StopAnimate(); this.InitializeGraph() })
+    this.animateButton = MakeCircleButton(135, 30, '⏵', 'Запустить', 25, () => { this.Animate() })
+    this.stepButton = MakeCircleButton(190, 30, '⏯', 'Шаг', 18, () => { this.StopAnimate(); this.StepAnimate() })
+
+    buttonsSVG.appendChild(this.resetButton.button)
+    buttonsSVG.appendChild(this.resetButton.text)
+
+    buttonsSVG.appendChild(this.animateButton.button)
+    buttonsSVG.appendChild(this.animateButton.text)
+
+    buttonsSVG.appendChild(this.stepButton.button)
+    buttonsSVG.appendChild(this.stepButton.text)
+
+    buttonsSection.appendChild(buttonsSVG)
 }
 
 BackpropagationVisualizer.prototype.InitSizes = function() {
@@ -35,10 +64,8 @@ BackpropagationVisualizer.prototype.InitSizes = function() {
     }, 'mse')
 
     this.needUpdateBox = MakeCheckBox('need-update-box', true)
-
-    this.animateButton = MakeButton('animate-btn', 'Запустить')
-    this.changeValuesButton = MakeButton('change-values-btn', 'Сбросить')
     this.learningRateBox = MakeNumberInput('learning-rate-box', 0.4, 0.01, 0.01, 10, 'number')
+    this.timeBox = MakeNumberInput('time-box', 100, 10, 0, 1000, 'number')
 
     MakeLabeledRange(sizesSection, this.inputCountBox, '<b>Количество входов</b>', () => this.inputCountBox.value )
     MakeLabeledBlock(sizesSection, this.activationBox, '<b>Функция активации</b><br>')
@@ -46,20 +73,12 @@ BackpropagationVisualizer.prototype.InitSizes = function() {
     MakeLabeledBlock(sizesSection, this.targetBox, '<b>Ожидаемое значение</b><br>')
     MakeLabeledBlock(sizesSection, this.needUpdateBox, '<b>Обновлять веса</b><br>')
     MakeLabeledBlock(sizesSection, this.learningRateBox, '<b>Шаг обновления</b><br>')
-
-    let div = MakeDiv('', '')
-    div.appendChild(this.changeValuesButton)
-    div.appendChild(MakeSpan('', ' '))
-    div.appendChild(this.animateButton)
-
-    MakeLabeledBlock(sizesSection, div, '', 'centered control-block')
+    MakeLabeledBlock(sizesSection, this.timeBox, '<b>Время перехода</b><br>')
 
     this.AddEventListener(this.inputCountBox, 'input', () => this.ChangeInputCount(), true)
     this.AddEventListener(this.activationBox, 'change', () => this.ChangeActivation())
     this.AddEventListener(this.lossBox, 'change', () => this.Recalculate())
     this.AddEventListener(this.targetBox, 'input', () => this.Recalculate())
-    this.AddEventListener(this.animateButton, 'click', () => this.Animate())
-    this.AddEventListener(this.changeValuesButton, 'click', () => this.InitializeGraph())
     this.AddEventListener(this.needUpdateBox, 'change', () => this.learningRateBox.parentNode.parentNode.style.display = this.needUpdateBox.checked ? '' : 'none')
 }
 
@@ -99,36 +118,65 @@ BackpropagationVisualizer.prototype.UpdateWeights = function() {
     this.b.UpdateValues()
 }
 
-BackpropagationVisualizer.prototype.Animate = function() {
-    let index = 0
-
+BackpropagationVisualizer.prototype.Reset = function() {
     this.Recalculate()
 
     for (let node of this.graph) {
         node.InitVisibility()
     }
+}
 
-    let wasUpdated = false
-    let interval = setInterval(() => {
-        if (index >= this.commands.length) {
-            if (!this.needUpdateBox.checked) {
-                clearInterval(interval)
-                return
-            }
+BackpropagationVisualizer.prototype.LoopAnimate = function(currTime) {
+    if (!this.isStarted)
+        return
 
-            if (!wasUpdated) {
-                this.UpdateWeights()
-                wasUpdated = true
-            }
-            else {
-                clearInterval(interval)
-                return
-            }
-        }
-        else {
-            this.ExecuteCommand(this.commands[index++])
-        }
-    }, 500)
+    if (currTime - this.prevTime > +this.timeBox.value) {
+        this.StepAnimate()
+        this.prevTime = currTime
+    }
+
+    requestAnimationFrame((t) => this.LoopAnimate(t))
+}
+
+BackpropagationVisualizer.prototype.StartAnimate = function() {
+    if (this.isStarted)
+        return
+
+    this.animateButton.text.textContent = '⏸'
+    this.isStarted = true
+    this.prevTime = 0
+    this.LoopAnimate()
+}
+
+BackpropagationVisualizer.prototype.StopAnimate = function() {
+    if (!this.isStarted)
+        return
+
+    this.animateButton.text.textContent = '⏵'
+    this.isStarted = false
+}
+
+BackpropagationVisualizer.prototype.StepAnimate = function() {
+    if (this.commandIndex < this.commands.length) {
+        this.ExecuteCommand(this.commands[this.commandIndex++])
+        return
+    }
+
+    if (this.needUpdateBox.checked) {
+        this.UpdateWeights()
+    }
+
+    this.commandIndex = 0
+    this.Reset()
+}
+
+BackpropagationVisualizer.prototype.Animate = function() {
+    if (!this.isStarted) {
+        this.StartAnimate()
+    }
+    else {
+        this.StopAnimate()
+    }
 }
 
 BackpropagationVisualizer.prototype.MakeCommands = function() {
@@ -175,6 +223,14 @@ BackpropagationVisualizer.prototype.Recalculate = function() {
     for (let node of this.graph) {
         node.UpdateValues()
     }
+}
+
+BackpropagationVisualizer.prototype.SetActivation = function(node) {
+    let activation = this.activationBox.value
+    let activations = { 'tanh': 'tanh', 'relu': 'ReLU', 'sigmoid': 'σ' }
+    let nums = '₁₂₃₄₅₆₇₈'
+
+    node.textNode.textContent = 'y=' + activations[activation] + '(v' + nums[this.inputCountBox.value*2-1] + ')'
 }
 
 BackpropagationVisualizer.prototype.InitializeGraph = function() {
@@ -249,16 +305,11 @@ BackpropagationVisualizer.prototype.InitializeGraph = function() {
     for (let i = this.graph.length - 1; i >= 0; i--)
         this.graph[i].ToSVG(this.svg)
 
-    this.x[0].SetValue(2)
-    this.w[0].SetValue(1)
+    this.SetActivation(this.y)
+    this.Reset()
 
-    this.x[1].SetValue(-0.5)
-    this.w[1].SetValue(3)
-
-    this.b.SetValue(-1.2)
-
-    this.Recalculate()
     this.commands = this.MakeCommands()
+    this.commandIndex = 0
 }
 
 BackpropagationVisualizer.prototype.ChangeInputCount = function() {
@@ -267,5 +318,6 @@ BackpropagationVisualizer.prototype.ChangeInputCount = function() {
 
 BackpropagationVisualizer.prototype.ChangeActivation = function() {
     this.y.type = this.activationBox.value
+    this.SetActivation(this.y)
     this.Recalculate()
 }
