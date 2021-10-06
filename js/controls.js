@@ -126,3 +126,29 @@ function MakeLabeledRange(parent, range, text, onchange, className = 'control-bl
 
     range.oninput()
 }
+
+function MakeCircleButton(x, y, value, hint, radius, onclick) {
+    let button = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+    button.setAttribute('cx', x)
+    button.setAttribute('cy', y)
+    button.setAttribute('r', radius)
+    button.setAttribute('class', 'button')
+    button.setAttribute('stroke-width', '1px')
+    button.onclick = onclick
+
+    let text = document.createElementNS("http://www.w3.org/2000/svg", "text")
+
+    text.textContent = value
+    text.setAttribute('x', x)
+    text.setAttribute('y', y)
+    text.setAttribute('class', 'button-text')
+    text.setAttribute('dominant-baseline', 'middle')
+    text.setAttribute('text-anchor', 'middle')
+    text.onclick = onclick
+
+    let title = document.createElementNS("http://www.w3.org/2000/svg", "title")
+    title.textContent = hint
+    button.appendChild(title)
+
+    return {button: button, text: text}
+}

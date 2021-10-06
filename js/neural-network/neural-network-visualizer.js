@@ -23,9 +23,9 @@ NeuralNetworkVisualizer.prototype.InitButtonsSection = function() {
     buttonsSVG.style.userSelect = 'none'
     buttonsSVG.style.marginBottom = '-5px'
 
-    this.resetButton = this.MakeCircleButton(80, 30, '⭮', 'Сбросить', 18, () => this.ResetTrain())
-    this.trainButton = this.MakeCircleButton(135, 30, '⏵', 'Обучить', 25, () => { this.TrainNetwork() })
-    this.stepButton = this.MakeCircleButton(190, 30, '⏯', 'Шаг', 18, () => { this.StopTrain(); this.StepTrain() })
+    this.resetButton = MakeCircleButton(80, 30, '⭮', 'Сбросить', 18, () => this.ResetTrain())
+    this.trainButton = MakeCircleButton(135, 30, '⏵', 'Обучить', 25, () => { this.TrainNetwork() })
+    this.stepButton = MakeCircleButton(190, 30, '⏯', 'Шаг', 18, () => { this.StopTrain(); this.StepTrain() })
 
     buttonsSVG.appendChild(this.resetButton.button)
     buttonsSVG.appendChild(this.resetButton.text)
@@ -563,32 +563,6 @@ NeuralNetworkVisualizer.prototype.RemoveLayer = function(layer) {
     this.DrawDataset()
 }
 
-NeuralNetworkVisualizer.prototype.MakeCircleButton = function(x, y, value, hint, radius, onclick) {
-    let button = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-    button.setAttribute('cx', x)
-    button.setAttribute('cy', y)
-    button.setAttribute('r', radius)
-    button.setAttribute('class', 'button')
-    button.setAttribute('stroke-width', '1px')
-    button.onclick = onclick
-
-    let text = document.createElementNS("http://www.w3.org/2000/svg", "text")
-
-    text.textContent = value
-    text.setAttribute('x', x)
-    text.setAttribute('y', y)
-    text.setAttribute('class', 'button-text')
-    text.setAttribute('dominant-baseline', 'middle')
-    text.setAttribute('text-anchor', 'middle')
-    text.onclick = onclick
-
-    let title = document.createElementNS("http://www.w3.org/2000/svg", "title")
-    title.textContent = hint
-    button.appendChild(title)
-
-    return {button: button, text: text}
-}
-
 NeuralNetworkVisualizer.prototype.MakeCircleButtons = function() {
     let padding = 10
     let radius = 14
@@ -601,9 +575,9 @@ NeuralNetworkVisualizer.prototype.MakeCircleButtons = function() {
         let x = padding + this.neuronRadius + i * deltaWidth
         let y = padding + 10
 
-        buttons.push(this.MakeCircleButton(x - 2 * radius - 3, y, '-', 'Удалить нейрон', radius, () => this.ChangeNeurons(i - 1, -1)))
-        buttons.push(this.MakeCircleButton(x, y, '+', 'Добавить нейрон', radius, () => this.ChangeNeurons(i - 1, 1)))
-        buttons.push(this.MakeCircleButton(x + 2 * radius + 3, y, '×', 'Удалить слой', radius, () => this.RemoveLayer(i - 1)))
+        buttons.push(MakeCircleButton(x - 2 * radius - 3, y, '-', 'Удалить нейрон', radius, () => this.ChangeNeurons(i - 1, -1)))
+        buttons.push(MakeCircleButton(x, y, '+', 'Добавить нейрон', radius, () => this.ChangeNeurons(i - 1, 1)))
+        buttons.push(MakeCircleButton(x + 2 * radius + 3, y, '×', 'Удалить слой', radius, () => this.RemoveLayer(i - 1)))
     }
 
     return buttons
