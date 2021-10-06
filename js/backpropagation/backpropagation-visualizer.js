@@ -128,7 +128,7 @@ BackpropagationVisualizer.prototype.Animate = function() {
         else {
             this.ExecuteCommand(this.commands[index++])
         }
-    }, 200)
+    }, 500)
 }
 
 BackpropagationVisualizer.prototype.MakeCommands = function() {
