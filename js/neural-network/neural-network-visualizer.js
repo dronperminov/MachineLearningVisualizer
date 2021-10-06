@@ -64,6 +64,11 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
         'softsign': 'softsign'
     }, 'tanh')
 
+    this.activationNeedBox = MakeCheckBox('activation-need-box', true)
+    this.activationSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    this.activationSVG.setAttribute('width', 270)
+    this.activationSVG.setAttribute('height', 180)
+
     this.learningRateBox.setAttribute('pattern', '\d+')
     this.optimizerBox = MakeSelect('optimizer-box', {
         'sgd': 'SGD',
@@ -81,8 +86,10 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
 
     MakeLabeledBlock(trainSection, this.learningRateBox, '<b>Скорость обучения (&eta;)</b>')
     MakeLabeledBlock(trainSection, this.regularizationTypeBox, '<b>Регуляризация</b>')
-    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>Коээфициент регуляризации (&lambda;)</b>')
-    MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>')
+    MakeLabeledBlock(trainSection, this.regularizationBox, '<b>Значение регуляризации (&lambda;)</b>')
+    MakeLabeledBlock(trainSection, this.activationBox, '<b>Функция активации</b><br>', 'control-block no-margin')
+    MakeLabeledBlock(trainSection, this.activationNeedBox, '<b>Строить график функции</b><br>', 'control-block no-margin')
+    trainSection.appendChild(this.activationSVG)
     MakeLabeledBlock(trainSection, this.optimizerBox, '<b>Оптимизатор</b><br>')
     MakeLabeledRange(trainSection, this.batchSizeBox, '<b>Размер батча</b><br>', () => { return this.batchSizeBox.value }, 'control-block no-margin')
 
@@ -93,6 +100,8 @@ NeuralNetworkVisualizer.prototype.InitTrainSection = function() {
     this.AddEventListener(this.regularizationBox, 'keydown', (e) => { if (e.key == '-' || e.key == '+') e.preventDefault() })
 
     this.AddEventListener(this.activationBox, 'change', () => this.ChangeNetworkActivation())
+    this.AddEventListener(this.activationNeedBox, 'change', () => this.activationSVG.style.display = this.activationNeedBox.checked ? '' : 'none')
+
     this.AddEventListener(this.optimizerBox, 'change', () => this.InitOptimizer())
     this.AddEventListener(this.regularizationTypeBox, 'change', () => this.ChangeRegularizationType())
     this.AddEventListener(this.batchSizeBox, 'input', () => this.UpdateNetworkData())
@@ -173,6 +182,7 @@ NeuralNetworkVisualizer.prototype.InitNetworkArchitecture = function() {
     }
 
     this.DrawNetworkArchitecture()
+    this.PlotActivation()
 }
 
 NeuralNetworkVisualizer.prototype.InitNetwork = function() {
@@ -215,11 +225,54 @@ NeuralNetworkVisualizer.prototype.ChangeNetworkActivation = function() {
 
     this.DrawDataset()
     this.DrawNetworkArchitecture()
+    this.UpdateLosses()
+    this.PlotActivation()
+}
 
-    let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
-    let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
+NeuralNetworkVisualizer.prototype.PlotActivation = function() {
+    let width = 250
+    let height = 180
+    let x = 10
+    let y = 0
 
-    this.UpdateLossesInfo(trainLoss, testLoss)
+    let x0 = x + width / 2
+    let y0 = y + height / 2
+
+    let activationAxisPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+    let activationPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+
+    this.activationSVG.innerHTML = ''
+    this.activationSVG.appendChild(activationAxisPath)
+    this.activationSVG.appendChild(activationPath)
+
+    activationAxisPath.setAttribute('fill', 'none')
+    activationAxisPath.setAttribute('stroke', '#000')
+    activationAxisPath.setAttribute('stroke-width', '1px')
+    activationAxisPath.setAttribute('d', `M ${x0} ${y} L ${x0} ${y + height} M ${x} ${y0} L ${x + width} ${y0}`)
+
+    activationPath.setAttribute('fill', 'none')
+    activationPath.setAttribute('stroke', '#dd7373')
+    activationPath.setAttribute('stroke-width', '3px')
+
+    let xmin = -3
+    let xmax = 3
+
+    let ymin = xmin / width * height
+    let ymax = xmax / width * height
+
+    let dx = 0.05
+    let points = ''
+    let layer = new FullyConnectedLayer(1, 1, this.activationBox.value)
+
+    for (let t = xmin; t <= xmax; t += dx) {
+        let fy = layer.ActivateOnce(t)
+        let ix = x + (t - xmin) / (xmax - xmin) * width
+        let iy = y + (ymax - fy) / (ymax - ymin) * height
+
+        points += `${points.length == 0 ? 'M' : 'L'} ${ix} ${iy}`
+    }
+
+    activationPath.setAttribute('d', points)
 }
 
 NeuralNetworkVisualizer.prototype.ChangeRegularizationType = function() {
@@ -341,6 +394,13 @@ NeuralNetworkVisualizer.prototype.GetNeuronsData = function() {
     return {data: data, points: points, length: data.length}
 }
 
+NeuralNetworkVisualizer.prototype.UpdateLosses = function() {
+    let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
+    let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
+
+    this.UpdateLossesInfo(trainLoss, testLoss)
+}
+
 NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     this.trainNetworkData = this.ConvertDataToNetwork(this.trainData)
     this.testNetworkData = this.ConvertDataToNetwork(this.testData)
@@ -350,10 +410,7 @@ NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     this.canvasData = this.UpdateCanvasData()
     this.neuronsData = this.GetNeuronsData()
 
-    let trainLoss = this.network.CalculateLossOnData(this.trainNetworkData, this.lossFunction)
-    let testLoss = this.network.CalculateLossOnData(this.testNetworkData, this.lossFunction)
-
-    this.UpdateLossesInfo(trainLoss, testLoss)
+    this.UpdateLosses()
 }
 
 NeuralNetworkVisualizer.prototype.InitOptimizer = function() {
@@ -466,6 +523,8 @@ NeuralNetworkVisualizer.prototype.ChangeInputUsed = function(index) {
 NeuralNetworkVisualizer.prototype.DisableNeuron = function(layer, neuron) {
     this.network.DisableNeuron(layer, neuron)
     this.InitNetworkArchitecture()
+
+    this.UpdateLosses()
     this.DrawDataset()
 }
 
@@ -834,9 +893,8 @@ NeuralNetworkVisualizer.prototype.MixColor = function(color1, color2, t) {
 NeuralNetworkVisualizer.prototype.GetColorByOutput = function(output, isDiscrete) {
     let label = output > 0 ? 0 : 1
     let colors = [[221, 115, 115], [118, 153, 212]]
-    let discreteColors = [[230, 155, 155], [142, 171, 219]]
 
-    return isDiscrete ? discreteColors[label] : this.MixColor(colors[label], [255, 255, 255], Math.abs(output))
+    return isDiscrete ? colors[label] : this.MixColor(colors[label], [255, 255, 255], Math.abs(output))
 }
 
 NeuralNetworkVisualizer.prototype.DrawNetwork = function(ctx, canvas) {
