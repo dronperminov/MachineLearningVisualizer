@@ -197,27 +197,6 @@ NeuralNetworkVisualizer.prototype.InitNetwork = function() {
     this.isTraining = false
 }
 
-NeuralNetworkVisualizer.prototype.SplitOnBatches = function(data, batchSize, isRandom = false) {
-    let x = []
-    let y = []
-
-    for (let i = 0; i < data.length; i += batchSize) {
-        let batchX = []
-        let batchY = []
-
-        for (j = 0; j < batchSize; j++) {
-            let index = isRandom ? Math.floor(Math.random() * data.length) : (i + j) % data.length
-            batchX.push(data.x[index])
-            batchY.push(data.y[index])
-        }
-
-        x.push(batchX)
-        y.push(batchY)
-    }
-
-    return { x: x, y: y, length: x.length }
-}
-
 NeuralNetworkVisualizer.prototype.ChangeNetworkActivation = function() {
     let activation = this.activationBox.value
 
@@ -406,7 +385,7 @@ NeuralNetworkVisualizer.prototype.UpdateNetworkData = function() {
     this.testNetworkData = this.ConvertDataToNetwork(this.testData)
 
     this.batchSize = +this.batchSizeBox.value
-    this.batches = this.SplitOnBatches(this.trainNetworkData, this.batchSize)
+    this.batches = SplitOnBatches(this.trainNetworkData, this.batchSize)
     this.canvasData = this.UpdateCanvasData()
     this.neuronsData = this.GetNeuronsData()
 
