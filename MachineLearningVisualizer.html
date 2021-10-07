@@ -16,11 +16,11 @@
                     <label><b>ML алгоритм:</b><br>
                     <select id="algorithm-type-box" onchange="visualizer = GetVisualizerByType()">
                         <option value="neural-network">Нейронная сеть</option>
-                        <option value="backpropagation" selected>Обратное распространение ошибки</option>
+                        <option value="backpropagation">Обратное распространение ошибки</option>
                         <option value="k-means">k-средних</option>
                         <option value="neuron">Нейрон</option>
                         <option value="log-reg">Логистическая регрессия</option>
-                        <option value="svm">Метод опорных векторов (SVM)</option>
+                        <option value="svm" selected>Метод опорных векторов (SVM)</option>
                     </select>
                     </label>
                 </div>
@@ -42,6 +42,7 @@
 
     <script src="js/controls.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/batches.js"></script>
 
     <script src="js/neural-network/weight.js"></script>
     <script src="js/neural-network/optimizer.js"></script>
@@ -53,6 +54,9 @@
     
     <script src="js/backpropagation/node.js"></script>
     <script src="js/backpropagation/backpropagation-visualizer.js"></script>
+
+    <script src="js/svm/svm.js"></script>
+    <script src="js/svm/svm-visualizer.js"></script>
 
     <script>
         function ClearBox(box) {
@@ -81,6 +85,11 @@
             if (type == 'backpropagation') {
                 topControlsBox.style.display = 'none'
                 return new BackpropagationVisualizer(viewBox, leftControlsBox)
+            }
+
+            if (type == 'svm') {
+                topControlsBox.style.display = 'none'
+                return new SupportVectorMachineVisualizer(viewBox, leftControlsBox)
             }
 
             throw `unknown type "${type}"`
