@@ -73,6 +73,14 @@ function MakeButton(id, text) {
     return button
 }
 
+function MakeFileInput(accept, onchange) {
+    let fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = accept
+    fileInput.onchange = onchange
+    return fileInput
+}
+
 function MakeSection(text, className = 'controls-section') {
     let section = document.createElement('div')
     section.className = className
