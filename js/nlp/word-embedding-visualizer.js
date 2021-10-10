@@ -1,10 +1,10 @@
-function WordEmbeddingVisualizer(viewBox, leftcontrolsBox, topControlsBox) {
+function WordEmbeddingVisualizer(viewBox, leftcontrolsBox) {
     this.viewBox = viewBox
     this.leftControlsBox = leftcontrolsBox
-    this.topControlsBox = topControlsBox
 
     this.InitEmbeddingSecion()
     this.InitWordSection()
+    this.InitView()
 }
 
 WordEmbeddingVisualizer.prototype.InitEmbeddingSecion = function() {
@@ -26,6 +26,7 @@ WordEmbeddingVisualizer.prototype.InitWordSection = function() {
 
     this.wordsInput = MakeTextInput('words-input', 'king - man + woman')
     this.topCountBox = MakeNumberInput('top-count-box', 10, 1, 1, 20, 'range')
+    this.pcaCountBox = MakeNumberInput('pca-count-box', 25, 1, 5, 100, 'range')
     this.metricBox = MakeSelect('metric-box', { 'cos': 'косинусное', 'l2': 'L2 норма'}, 'cos')
 
     this.calcBtn = MakeButton('load-btn', 'Найти')
@@ -35,10 +36,23 @@ WordEmbeddingVisualizer.prototype.InitWordSection = function() {
 
     MakeLabeledBlock(this.wordSection, this.wordsInput, '<b>Выражение из слов</b>')
     MakeLabeledRange(this.wordSection, this.topCountBox, '<b>Количество выводимых слов<br></b>', () => { return this.topCountBox.value }, 'control-block no-margin')
+    MakeLabeledRange(this.wordSection, this.pcaCountBox, '<b>Количество слов для PCA<br></b>', () => { return this.pcaCountBox.value }, 'control-block no-margin')
     MakeLabeledBlock(this.wordSection, this.metricBox, '<b>Метрика схожести</b>', 'control-block no-margin')
     MakeLabeledBlock(this.wordSection, this.calcBtn, '', 'control-block centered')
     MakeLabeledBlock(this.wordSection, this.wordsTable, '')
     this.wordSection.style.display = 'none'
+}
+
+WordEmbeddingVisualizer.prototype.InitView = function() {
+    this.pcaSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    this.pcaSVG.style.width = '100%'
+    this.pcaSVG.style.height = '100%'
+
+    this.pcaGraphic = document.createElementNS("http://www.w3.org/2000/svg", "g")
+    this.pcaSVG.appendChild(this.pcaGraphic)
+    this.pcaSVG.addEventListener('mousewheel', (e) => this.ScrollPCA(e))
+
+    this.viewBox.appendChild(this.pcaSVG)
 }
 
 WordEmbeddingVisualizer.prototype.ChangeFile = function() {
@@ -63,6 +77,139 @@ WordEmbeddingVisualizer.prototype.LoadFile = function(text) {
 
     let t1 = performance.now()
     console.log('Load time:', t1 - t0, 'ms (' + Object.keys(this.embedding).length + ')')
+}
+
+WordEmbeddingVisualizer.prototype.MakePCAPoint = function(word, x, y, radius = 15) {
+    let point = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+    point.setAttribute('cx', x)
+    point.setAttribute('cy', y)
+    point.setAttribute('r', radius)
+    point.setAttribute('fill', '#7699d4')
+    point.setAttribute('stroke', '#000')
+    point.setAttribute('stroke-width', '1px')
+    this.pcaGraphic.appendChild(point)
+
+    let text = document.createElementNS("http://www.w3.org/2000/svg", "text")
+    text.textContent = word
+    text.setAttribute('y', y - radius)
+    text.setAttribute('dominant-baseline', 'middle')
+
+    if (x < this.pcaSVG.clientWidth / 2) {
+        text.setAttribute('x', x + radius)
+        text.setAttribute('text-anchor', 'start')
+    }
+    else {
+        text.setAttribute('x', x - radius)
+        text.setAttribute('text-anchor',  'end')
+    }
+
+    this.pcaGraphic.appendChild(text)
+
+    point.addEventListener('mouseover', () => this.BringToFront(point, text))
+    point.addEventListener('mousemove', () => this.BringToFront(point, text))
+    point.addEventListener('mouseleave', () => this.ResetPoints())
+
+    text.addEventListener('mouseover', () => this.BringToFront(point, text))
+    text.addEventListener('mousemove', () => this.BringToFront(point, text))
+    text.addEventListener('mouseleave', () => this.ResetPoints())
+}
+
+WordEmbeddingVisualizer.prototype.BringToFront = function(point, text) {
+    this.pcaGraphic.removeChild(point)
+    this.pcaGraphic.removeChild(text)
+
+    for (let child of this.pcaGraphic.children) {
+        if (child.tagName == 'text') {
+            child.setAttribute('fill', '#ddd')
+        }
+        else if (child.tagName == 'circle') {
+            child.setAttribute('fill', '#ddd')
+            child.setAttribute('stroke', '#bbb')
+        }
+    }
+
+    text.setAttribute('fill', '#000')
+    point.setAttribute('fill', '#7699d4')
+    point.setAttribute('stroke', '#000')
+
+    this.pcaGraphic.appendChild(point)
+    this.pcaGraphic.appendChild(text)
+}
+
+WordEmbeddingVisualizer.prototype.ResetPoints = function() {
+    for (let child of this.pcaGraphic.children) {
+        if (child.tagName == 'text') {
+            child.setAttribute('fill', '#000')
+        }
+        else if (child.tagName == 'circle') {
+            child.setAttribute('fill', '#7699d4')
+            child.setAttribute('stroke', '#000')
+        }
+    }
+}
+
+WordEmbeddingVisualizer.prototype.ScrollPCA = function(e) {
+    if (e.shiftKey) {
+        this.offsetX -= Math.sign(e.deltaY) * 20
+    }
+    else if (e.altKey) {
+        this.offsetY -= Math.sign(e.deltaY) * 20
+    }
+    else {
+        let scale = e.deltaY < 0 ? 1.25 : 0.8
+        this.pcaScale *= scale
+        this.offsetX = (this.offsetX - e.offsetX) * scale + e.offsetX
+        this.offsetY = (this.offsetY - e.offsetY) * scale + e.offsetY
+    }
+
+    e.preventDefault()
+    this.pcaGraphic.setAttribute('transform', `translate(${this.offsetX} ${this.offsetY}) scale(${this.pcaScale})`)
+}
+
+WordEmbeddingVisualizer.prototype.DrawPCA = function(words, computed) {
+    let xmin = Infinity
+    let xmax = -Infinity
+
+    let ymin = Infinity
+    let ymax = -Infinity
+
+    for (let i = 0; i < words.length; i++) {
+        xmin = Math.min(xmin, computed[0][i])
+        xmax = Math.max(xmax, computed[0][i])
+
+        ymin = Math.min(ymin, computed[1][i])
+        ymax = Math.max(ymax, computed[1][i])
+    }
+
+    this.pcaGraphic.innerHTML = ''
+    this.pcaScale = 1
+    this.offsetX = 0
+    this.offsetY = 0
+    this.pcaGraphic.setAttribute('transform', `translate(${this.offsetX} ${this.offsetY}) scale(${this.pcaScale})`)
+
+    let radius = 7
+    let padding = 10
+    let width = this.pcaSVG.clientWidth - 2 * (padding + radius)
+    let height = this.pcaSVG.clientHeight - 2 * (padding + radius)
+
+    for (let i = 0; i < words.length; i++) {
+        let x = padding + radius + (computed[0][i] - xmin) / (xmax - xmin) * width
+        let y = padding + radius + (computed[1][i] - ymin) / (ymax - ymin) * height
+
+        this.MakePCAPoint(words[i], x, y, radius)
+    }
+}
+
+WordEmbeddingVisualizer.prototype.PCA = function(words) {
+    let data = []
+
+    for (let word of words)
+        data.push(this.embedding[word].vector)
+
+    let vectors = PCA.getEigenVectors(data)
+    let computed = PCA.computeAdjustedData(data, vectors[0], vectors[1]).adjustedData
+
+    this.DrawPCA(words, computed)
 }
 
 WordEmbeddingVisualizer.prototype.Dot = function(a, b) {
@@ -133,10 +280,10 @@ WordEmbeddingVisualizer.prototype.GetTopWords = function(v, count) {
     return { words: words, similarities: similarities }
 }
 
-WordEmbeddingVisualizer.prototype.PrintTopWords = function(top) {
+WordEmbeddingVisualizer.prototype.PrintTopWords = function(top, count) {
     this.wordsTable.innerHTML = ''
 
-    for (let i = 0; i < top.words.length; i++) {
+    for (let i = 0; i < count; i++) {
         this.wordsTable.innerHTML += (i + 1) + '. <b>' + top.words[i] + '</b> (' + (Math.round(top.similarities[i] * 1000) / 1000) + ')<br>'
     }
 }
@@ -159,11 +306,25 @@ WordEmbeddingVisualizer.prototype.Calculate = function() {
         words.push(expression[i + 1])
     }
 
-    let count = +this.topCountBox.value
+    let topCount = +this.topCountBox.value
+    let pcaCount = +this.pcaCountBox.value
+    let count = Math.max(topCount, pcaCount)
+
     let v = this.Combination(words, weights)
     let top = this.GetTopWords(v, count)
     
-    this.PrintTopWords(top)
+    this.PrintTopWords(top, topCount)
+
+    let pcaWords = []
+
+    for (word of words)
+        if (word in this.embedding)
+            pcaWords.push(word)
+
+    for (word of top.words)
+        pcaWords.push(word)
+
+    this.PCA(pcaWords)
 
     let t1 = performance.now()
     console.log('Calculate time:', t1 - t0, 'ms')
