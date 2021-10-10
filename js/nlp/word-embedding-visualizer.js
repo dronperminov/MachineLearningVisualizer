@@ -11,13 +11,23 @@ WordEmbeddingVisualizer.prototype.InitEmbeddingSecion = function() {
     let embeddingSection = MakeSection('Файл с представлением')
     this.leftControlsBox.appendChild(embeddingSection)
 
+    this.embeddingBox = MakeSelect('embedding-box', {
+        'load': 'Загрузить файл',
+        'data/computer_security.json': 'компьютерная безопасность (73 Mb)',
+        'data/computer_security_lower.json': 'компьютерная безопасность (lower, 64 Mb)',
+        'data/news.json': 'новости с wikinews (117 Mb)',
+        'data/news_lower.json': 'новости с wikinews (lower, 109 Mb)'
+    }, 'load')
+    this.embeddingBox.addEventListener('change', () => this.ChangeEmbedding())
+
     this.loadBtn = MakeButton('load-btn', 'Загрузить')
     this.pathDiv = MakeDiv('path-div', 'файл не выбран', 'centere')
     this.fileInput = MakeFileInput('.json', () => this.ChangeFile())
     this.loadBtn.addEventListener('click', () => { this.fileInput.click() })
 
-    let block = MakeLabeledBlock(embeddingSection, this.loadBtn, '', 'control-block centered')
-    block.appendChild(this.pathDiv)
+    MakeLabeledBlock(embeddingSection, this.embeddingBox, '', 'control-block centered')
+    this.loadBlock = MakeLabeledBlock(embeddingSection, this.loadBtn, '', 'control-block centered')
+    this.loadBlock.appendChild(this.pathDiv)
 }
 
 WordEmbeddingVisualizer.prototype.InitWordSection = function() {
@@ -55,28 +65,43 @@ WordEmbeddingVisualizer.prototype.InitView = function() {
     this.viewBox.appendChild(this.pcaSVG)
 }
 
+WordEmbeddingVisualizer.prototype.ChangeEmbedding = function() {
+    let embedding = this.embeddingBox.value
+
+    if (embedding == 'load') {
+        this.loadBlock.style.display = ''
+    }
+    else {
+        this.loadBlock.style.display = 'none'
+        this.wordSection.style.display = 'none'
+        this.wordsTable.innerHTML = ''
+
+        this.LoadEmbedding(embedding)
+    }
+}
+
 WordEmbeddingVisualizer.prototype.ChangeFile = function() {
     if (this.fileInput.files.length == 0)
         return
 
     let file = this.fileInput.files[0]
     this.pathDiv.innerHTML = file.name
+    this.wordSection.style.display = 'none'
+    this.wordsTable.innerHTML = ''
 
     let reader = new FileReader()
     reader.readAsText(file)
-    reader.onload = () => this.LoadFile(reader.result)
+    reader.onload = () => this.LoadFile(JSON.parse(reader.result))
 }
 
-WordEmbeddingVisualizer.prototype.LoadFile = function(text) {
-    let t0 = performance.now()
-    let data = JSON.parse(text)
+WordEmbeddingVisualizer.prototype.LoadEmbedding = function(src) {
+    $.getJSON(src, (data) => this.LoadFile(data))
+}
 
+WordEmbeddingVisualizer.prototype.LoadFile = function(data) {
     this.embedding = data['embedding']
     this.size = data['size']
     this.wordSection.style.display = ''
-
-    let t1 = performance.now()
-    console.log('Load time:', t1 - t0, 'ms (' + Object.keys(this.embedding).length + ')')
 }
 
 WordEmbeddingVisualizer.prototype.MakePCAPoint = function(word, x, y, radius = 15) {
@@ -290,12 +315,18 @@ WordEmbeddingVisualizer.prototype.PrintTopWords = function(top, count) {
 
 // TODO: fix expression parsing
 WordEmbeddingVisualizer.prototype.Calculate = function() {
-    let t0 = performance.now()
     let expression = this.wordsInput.value.match(/\+|\-|[^\s]+/gi)
     let weights = [1]
     let words = [expression[0]]
+    let start = 1
 
-    for (let i = 1; i < expression.length; i += 2) {
+    if (expression[0] == '-') {
+        start = 2
+        weights[0] = -1
+        words[0] = expression[1]
+    }
+
+    for (let i = start; i < expression.length; i += 2) {
         if (expression[i] == '-') {
             weights.push(-1)
         }
@@ -325,7 +356,4 @@ WordEmbeddingVisualizer.prototype.Calculate = function() {
         pcaWords.push(word)
 
     this.PCA(pcaWords)
-
-    let t1 = performance.now()
-    console.log('Calculate time:', t1 - t0, 'ms')
 }
