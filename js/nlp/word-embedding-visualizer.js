@@ -42,6 +42,9 @@ WordEmbeddingVisualizer.prototype.InitWordSection = function() {
     this.calcBtn = MakeButton('load-btn', 'Найти')
     this.calcBtn.addEventListener('click', () => this.Calculate())
 
+    this.savePCABtn = MakeButton('save-pca-btn', 'Сохранить PCA')
+    this.savePCABtn.addEventListener('click', () => this.SavePCA())
+
     this.wordsTable = MakeDiv('words-table', '')
 
     MakeLabeledBlock(this.wordSection, this.wordsInput, '<b>Выражение из слов</b>')
@@ -50,7 +53,9 @@ WordEmbeddingVisualizer.prototype.InitWordSection = function() {
     MakeLabeledBlock(this.wordSection, this.metricBox, '<b>Метрика схожести</b>', 'control-block no-margin')
     MakeLabeledBlock(this.wordSection, this.calcBtn, '', 'control-block centered')
     MakeLabeledBlock(this.wordSection, this.wordsTable, '')
+    MakeLabeledBlock(this.wordSection, this.savePCABtn, '', 'control-block centered')
     this.wordSection.style.display = 'none'
+    this.savePCABtn.style.display = 'none'
 }
 
 WordEmbeddingVisualizer.prototype.InitView = function() {
@@ -235,6 +240,7 @@ WordEmbeddingVisualizer.prototype.PCA = function(words) {
     let computed = PCA.computeAdjustedData(data, vectors[0], vectors[1]).adjustedData
 
     this.DrawPCA(words, computed)
+    this.savePCABtn.style.display = ''
 }
 
 WordEmbeddingVisualizer.prototype.Dot = function(a, b) {
@@ -356,4 +362,56 @@ WordEmbeddingVisualizer.prototype.Calculate = function() {
         pcaWords.push(word)
 
     this.PCA(pcaWords)
+}
+
+WordEmbeddingVisualizer.prototype.SavePCA = function(width = 3640, height = 2048) {
+    let canvas = document.createElement("canvas")
+    let ctx = canvas.getContext("2d")
+    let dw = width / this.pcaSVG.clientWidth
+    let dh = height / this.pcaSVG.clientHeight
+
+    canvas.setAttribute('width', width);
+    canvas.setAttribute('height', height);
+
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, width, height)
+
+    for (let node of this.pcaSVG.children[0].children) {
+        if (node.tagName == 'text') {
+            let x = +node.getAttribute('x') * dw
+            let y = +node.getAttribute('y') * dh
+            let align = node.getAttribute('text-anchor')
+
+            ctx.beginPath()
+            ctx.fillStyle = '#000'
+            ctx.textBaseline = 'middle'
+            ctx.font = (18 * Math.min(dw, dh)) + 'px Ubuntu'
+
+            if (align == 'end') {
+                ctx.textAlign = 'right'
+            }
+            else {
+                ctx.textAlign = 'left'
+            }
+
+            ctx.fillText(node.textContent, x, y)
+        }
+        else if (node.tagName == 'circle') {
+            let x = +node.getAttribute('cx') * dw
+            let y = +node.getAttribute('cy') * dh
+            let radius = +node.getAttribute('r') * Math.min(dw, dh)
+
+            ctx.beginPath()
+            ctx.arc(x, y, radius, 0, Math.PI * 2)
+            ctx.fillStyle = '#7699d4'
+            ctx.strokeStyle = '#000'
+            ctx.fill()
+            ctx.stroke()
+        }
+    }
+
+    let link = document.createElement("a")
+    link.href = canvas.toDataURL()
+    link.download = 'pca.png'
+    link.click()
 }
